@@ -1,1 +1,38 @@
-<router-outlet></router-outlet>
+<div class="auth-shell">
+  <div class="auth-shell__loading" *ngIf="isLoading$ | async">
+    <p>Checking your session...</p>
+  </div>
+
+  <ng-container *ngIf="!(isLoading$ | async)">
+    <ng-container *ngIf="isAuthenticated$ | async; else loggedOut">
+      <header class="session-bar">
+        <div class="session-bar__identity" *ngIf="userDisplay$ | async as userDisplay">
+          <span class="session-bar__label">Signed in</span>
+          <span class="session-bar__value">{{ userDisplay }}</span>
+        </div>
+        <button class="session-bar__button" (click)="logOut()">Log out</button>
+      </header>
+
+      <router-outlet></router-outlet>
+    </ng-container>
+
+    <ng-template #loggedOut>
+      <section class="auth-card">
+        <p class="auth-card__eyebrow">Auth0 Protected App</p>
+        <h1>Sign in to access your collection</h1>
+        <p class="auth-card__copy">
+          This app now uses Auth0 Universal Login for authentication.
+        </p>
+
+        <p class="auth-card__error" *ngIf="authErrorMessage$ | async as errorMessage">
+          Error: {{ errorMessage }}
+        </p>
+
+        <div class="auth-card__actions">
+          <button class="auth-button auth-button--secondary" (click)="signUp()">Sign Up</button>
+          <button class="auth-button auth-button--primary" (click)="logIn()">Log In</button>
+        </div>
+      </section>
+    </ng-template>
+  </ng-container>
+</div>

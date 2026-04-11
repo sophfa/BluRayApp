@@ -1,6 +1,7 @@
 import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
+import { provideAuth0 } from '@auth0/auth0-angular';
 import Aura from '@primeuix/themes/aura';
 import { ConfirmationService } from 'primeng/api';
 import { providePrimeNG } from 'primeng/config';
@@ -12,6 +13,13 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideAnimationsAsync(),
+    provideAuth0({
+      domain: 'dev-e0rni53ebj3apjt5.us.auth0.com',
+      clientId: 'QXkBBrvYztj2b7nwhLOqgX1x5EqgjuRj',
+      authorizationParams: {
+        redirect_uri: document.baseURI
+      }
+    }),
     ConfirmationService,
     providePrimeNG({
       ripple: true,
