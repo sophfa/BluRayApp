@@ -2,11 +2,37 @@
   <p-menu #itemMenu [model]="movieMenuItems" [popup]="true" styleClass="movie-menu"></p-menu>
   <p-confirmpopup></p-confirmpopup>
 
+  <section class="collection-switcher" aria-label="Collection selector">
+    <div class="switch-tabs" role="tablist" aria-label="Collections">
+      <button
+        *ngFor="let collection of collections"
+        type="button"
+        class="switch-tab"
+        [class.is-active]="collection.path === activeCollectionPath"
+        [attr.aria-selected]="collection.path === activeCollectionPath"
+        (click)="switchCollection(collection.path)"
+      >
+        <i class="pi {{ collection.icon }}" aria-hidden="true"></i>
+        <span>{{ collection.label }}</span>
+      </button>
+    </div>
+
+    <label class="switch-select-wrap">
+      <span class="switch-select-label">Collection</span>
+      <select
+        class="switch-select"
+        [ngModel]="activeCollectionPath"
+        (ngModelChange)="switchCollection($event)"
+      >
+        <option *ngFor="let collection of collections" [value]="collection.path">
+          {{ collection.label }}
+        </option>
+      </select>
+    </label>
+  </section>
+
   <!-- Header -->
   <header class="header">
-    <button class="back-btn" (click)="goHome()" aria-label="Back to home">
-      <i class="pi pi-arrow-left"></i>
-    </button>
     <div class="header-left">
       <i class="header-icon pi {{ collectionIcon }}" aria-hidden="true"></i>
       <div>

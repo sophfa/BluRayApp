@@ -4,34 +4,78 @@
   padding: 0 16px 60px;
 }
 
+.collection-switcher {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 1rem;
+}
+
+.switch-tabs {
+  display: inline-flex;
+  gap: 0.35rem;
+  padding: 0.35rem;
+  border: 1px solid #2a2a38;
+  border-radius: 999px;
+  background: #14141d;
+}
+
+.switch-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.72rem 1rem;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: #8f90a3;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
+
+  &:hover {
+    color: #eef2ff;
+    background: #1d2231;
+  }
+
+  &.is-active {
+    color: #fff;
+    background: linear-gradient(135deg, #4f46e5, #4338ca);
+    box-shadow: 0 10px 26px rgba(79, 70, 229, 0.3);
+  }
+}
+
+.switch-select-wrap {
+  display: none;
+}
+
+.switch-select-label {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: #666;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.switch-select {
+  width: 100%;
+  padding: 0.8rem 0.95rem;
+  border: 1px solid #2a2a38;
+  border-radius: 12px;
+  background: #14141d;
+  color: #eef2ff;
+  font: inherit;
+}
+
 // ── Header ──────────────────────────────────────────────
 .header {
   display: flex;
   align-items: center;
-  gap: 12px;
   padding: 24px 0 20px;
-}
-
-.back-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  background: #18181f;
-  border: 1px solid #2a2a38;
-  border-radius: 50%;
-  color: #888;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: background 0.15s, color 0.15s;
-
-  &:hover {
-    background: #25253a;
-    color: #e2e2e8;
-  }
-
-  .pi { font-size: 0.85rem; }
 }
 
 .header-left {
@@ -407,6 +451,18 @@
 
 // ── Responsive ────────────────────────────────────────────
 @media (max-width: 600px) {
+  .collection-switcher {
+    display: block;
+  }
+
+  .switch-tabs {
+    display: none;
+  }
+
+  .switch-select-wrap {
+    display: block;
+  }
+
   .controls { flex-direction: column; align-items: stretch; }
   .action-btns { justify-content: flex-end; }
   .movie-actions { opacity: 1; }

@@ -25,9 +25,15 @@ const INITIAL_DATA: Record<string, Movie[]> = {
   styleUrl: './collection.scss'
 })
 export class CollectionComponent implements OnInit {
+  public readonly collections = [
+    { path: 'bluray', label: 'Blu-ray', icon: 'pi-video' },
+    { path: 'games', label: 'Games', icon: 'pi-desktop' }
+  ];
+
   public movies = signal<Movie[]>([]);
   public isLoaded = false;
 
+  public activeCollectionPath = 'bluray';
   public collectionKey = '';
   public collectionTitle = '';
   public collectionIcon = '';
@@ -56,6 +62,7 @@ export class CollectionComponent implements OnInit {
 
   public ngOnInit() {
     const data = this.route.snapshot.data;
+    this.activeCollectionPath = this.route.snapshot.routeConfig?.path ?? 'bluray';
     this.collectionKey = data['collectionKey'];
     this.collectionTitle = data['collectionTitle'];
     this.collectionIcon = data['collectionIcon'];
@@ -88,7 +95,13 @@ export class CollectionComponent implements OnInit {
   public get storageMode() { return this.storage.mode(); }
   public get storageMessage() { return this.storage.message(); }
 
-  public goHome() { this.router.navigate(['/']); }
+  public switchCollection(path: string) {
+    if (!path || path === this.activeCollectionPath) {
+      return;
+    }
+
+    void this.router.navigate(['/', path]);
+  }
 
   public setSort(field: SortField) {
     if (this.sortField === field) {

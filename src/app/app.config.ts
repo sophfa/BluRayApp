@@ -6,7 +6,6 @@ import Aura from '@primeuix/themes/aura';
 import { ConfirmationService } from 'primeng/api';
 import { providePrimeNG } from 'primeng/config';
 import { INITIAL_MOVIES } from './movies.data';
-import { HomeComponent } from './home/home';
 import { CollectionComponent } from './collection/collection';
 
 export const appConfig: ApplicationConfig = {
@@ -32,10 +31,7 @@ export const appConfig: ApplicationConfig = {
       }
     }),
     provideRouter([
-      {
-        path: '',
-        component: HomeComponent
-      },
+      { path: '', pathMatch: 'full', redirectTo: 'bluray' },
       {
         path: 'bluray',
         component: CollectionComponent,
@@ -58,7 +54,7 @@ export const appConfig: ApplicationConfig = {
           initialItems: []
         }
       },
-      { path: '**', redirectTo: '' }
+      { path: '**', redirectTo: 'bluray' }
     ], withComponentInputBinding())
   ]
 };
