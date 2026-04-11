@@ -1,0 +1,141 @@
+<div class="app">
+  <!-- Header -->
+  <header class="header">
+    <div class="header-left">
+      <span class="header-icon">🎬</span>
+      <div>
+        <h1>Blu-ray Collection</h1>
+        <p class="header-sub">{{ totalCount }} movies</p>
+      </div>
+    </div>
+  </header>
+
+  <div
+    class="sync-banner"
+    [class.sync-banner--remote]="storageMode() === 'remote'"
+    [class.sync-banner--error]="storageMode() === 'error'"
+    [class.sync-banner--local]="storageMode() === 'local'"
+  >
+    <span class="sync-banner__dot"></span>
+    <span>{{ storageMessage() }}</span>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input
+        class="search-input"
+        type="text"
+        placeholder="Search by title or number..."
+        [(ngModel)]="searchQuery"
+      />
+      <button *ngIf="searchQuery" class="clear-btn" (click)="searchQuery = ''">✕</button>
+    </div>
+
+    <div class="action-btns">
+      <button class="btn btn-primary" (click)="openAdd()">+ Add Movie</button>
+    </div>
+  </div>
+
+  <!-- Sort header -->
+  <div class="sort-header">
+    <button class="sort-btn" (click)="setSort('id')">
+      # <span *ngIf="sortField === 'id'">{{ sortDir === 'asc' ? '↑' : '↓' }}</span>
+    </button>
+    <button class="sort-btn sort-title" (click)="setSort('title')">
+      Title <span *ngIf="sortField === 'title'">{{ sortDir === 'asc' ? '↑' : '↓' }}</span>
+    </button>
+    <span class="sort-actions-label">Actions</span>
+  </div>
+
+  <!-- Result count -->
+  <div class="result-count" *ngIf="searchQuery">
+    Showing {{ filtered.length }} of {{ totalCount }} movies
+  </div>
+
+  <!-- Movie list -->
+  <div class="movie-list">
+    <div class="empty" *ngIf="!isLoaded">
+      Loading collection...
+    </div>
+
+    <ng-container *ngIf="isLoaded">
+      <div
+        *ngFor="let movie of filtered; trackBy: trackById"
+        class="movie-row"
+      >
+        <div class="movie-num">{{ movie.id }}</div>
+        <div class="movie-title">
+          <span>{{ movie.title }}</span>
+          <span *ngIf="movie.notes" class="has-notes" title="{{ movie.notes }}">📝</span>
+        </div>
+        <div class="movie-actions">
+          <button class="icon-btn" title="Edit title" (click)="openEdit(movie, $event)">✏️</button>
+          <button class="icon-btn" title="Notes" (click)="openNotes(movie, $event)">📝</button>
+          <button class="icon-btn icon-btn-danger" title="Delete" (click)="confirmDelete(movie, $event)">🗑️</button>
+        </div>
+      </div>
+
+      <div class="empty" *ngIf="filtered.length === 0">
+        No movies found. Try a different search.
+      </div>
+    </ng-container>
+  </div>
+
+  <!-- Add/Edit Modal -->
+  <div class="modal-backdrop" *ngIf="showModal" (click)="showModal = false">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h2>{{ isEditing ? 'Edit Movie' : 'Add Movie' }}</h2>
+      <div class="form-group">
+        <label>Number</label>
+        <input type="number" [(ngModel)]="modalMovie.id" [disabled]="isEditing" />
+      </div>
+      <div class="form-group">
+        <label>Title</label>
+        <input
+          type="text"
+          [(ngModel)]="modalMovie.title"
+          placeholder="Movie title..."
+          (keyup.enter)="saveModal()"
+        />
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" (click)="saveModal()" [disabled]="!modalMovie.title?.trim()">
+          {{ isEditing ? 'Save' : 'Add' }}
+        </button>
+        <button class="btn btn-ghost" (click)="showModal = false">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Confirm Modal -->
+  <div class="modal-backdrop" *ngIf="deleteTarget" (click)="deleteTarget = null">
+    <div class="modal modal-small" (click)="$event.stopPropagation()">
+      <h2>Delete Movie?</h2>
+      <p class="modal-msg">Remove <strong>{{ deleteTarget?.title }}</strong> from your collection?</p>
+      <div class="modal-actions">
+        <button class="btn btn-danger" (click)="doDelete()">Delete</button>
+        <button class="btn btn-ghost" (click)="deleteTarget = null">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notes Modal -->
+  <div class="modal-backdrop" *ngIf="notesTarget" (click)="notesTarget = null">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h2>Notes — {{ notesTarget!.title }}</h2>
+      <div class="form-group">
+        <textarea
+          rows="5"
+          [(ngModel)]="notesDraft"
+          placeholder="Add your notes here..."
+        ></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" (click)="saveNotes()">Save Notes</button>
+        <button class="btn btn-ghost" (click)="notesTarget = null">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
