@@ -42,16 +42,6 @@
     </div>
   </header>
 
-  <div
-    class="sync-banner"
-    [class.sync-banner--remote]="storageMode === 'remote'"
-    [class.sync-banner--error]="storageMode === 'error'"
-    [class.sync-banner--local]="storageMode === 'local'"
-  >
-    <span class="sync-banner__dot"></span>
-    <span>{{ storageMessage }}</span>
-  </div>
-
   <!-- Controls -->
   <div class="controls">
     <div class="search-wrap">

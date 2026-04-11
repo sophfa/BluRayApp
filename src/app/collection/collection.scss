@@ -104,31 +104,6 @@
   }
 }
 
-// ── Sync banner ───────────────────────────────────────────
-.sync-banner {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
-  padding: 8px 12px;
-  border: 1px solid #2a2a38;
-  border-radius: 999px;
-  background: #14141d;
-  color: #8b8b9d;
-  font-size: 0.8rem;
-
-  &__dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 999px;
-    background: #888;
-  }
-
-  &--remote { color: #9ae6b4; .sync-banner__dot { background: #22c55e; } }
-  &--local   { color: #facc15; .sync-banner__dot { background: #eab308; } }
-  &--error   { color: #fca5a5; .sync-banner__dot { background: #ef4444; } }
-}
-
 // ── Controls ─────────────────────────────────────────────
 .controls {
   display: flex;

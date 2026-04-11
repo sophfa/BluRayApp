@@ -1,8 +1,6 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { Movie } from './movies.data';
-
-type StorageMode = 'loading' | 'remote' | 'local' | 'error';
 
 interface RuntimeConfig {
   supabaseUrl: string;
@@ -18,9 +16,6 @@ const DEFAULT_CONFIG: RuntimeConfig = {
 
 @Injectable({ providedIn: 'root' })
 export class CollectionStorageService {
-  public readonly mode = signal<StorageMode>('loading');
-  public readonly message = signal('Connecting storage...');
-
   private client: SupabaseClient | null = null;
   private config: RuntimeConfig = DEFAULT_CONFIG;
   private initialized = false;
@@ -50,8 +45,6 @@ export class CollectionStorageService {
 
       if (this.isMovieArray(remoteMovies)) {
         this.writeLocal(collectionKey, remoteMovies);
-        this.mode.set('remote');
-        this.message.set('Supabase sync active.');
         return remoteMovies;
       }
 
@@ -59,11 +52,9 @@ export class CollectionStorageService {
       await this.saveRemote(collectionKey, seedMovies);
       return seedMovies;
     } catch (error) {
-      console.error('Failed to load Supabase state, falling back to local cache.', error);
+      console.warn('Supabase unavailable. Using local cache instead.', error);
       const fallback = localMovies ?? initialMovies;
       this.writeLocal(collectionKey, fallback);
-      this.mode.set('error');
-      this.message.set('Supabase unavailable. Using local cache.');
       return fallback;
     }
   }
@@ -78,7 +69,7 @@ export class CollectionStorageService {
 
     this.saveQueues[collectionKey] = this.saveQueues[collectionKey]
       .then(() => this.saveRemote(collectionKey, snapshot))
-      .catch(error => { console.error('Failed to sync Supabase state.', error); });
+      .catch(error => { console.warn('Saved locally, but Supabase sync failed.', error); });
 
     return this.saveQueues[collectionKey];
   }
@@ -89,17 +80,13 @@ export class CollectionStorageService {
     this.config = await this.loadRuntimeConfig();
 
     if (!this.config.supabaseUrl || !this.config.supabaseKey) {
-      this.mode.set('local');
-      this.message.set('Local-only mode. Configure public/app-config.json to enable Supabase.');
+      console.warn('Supabase is not configured. Running in local-only mode.');
       return;
     }
 
     this.client = createClient(this.config.supabaseUrl, this.config.supabaseKey, {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
     });
-
-    this.mode.set('loading');
-    this.message.set('Connecting to Supabase...');
   }
 
   private async loadRuntimeConfig(): Promise<RuntimeConfig> {
@@ -127,12 +114,8 @@ export class CollectionStorageService {
       { onConflict: 'id' }
     );
     if (error) {
-      this.mode.set('error');
-      this.message.set('Saved locally. Supabase sync failed.');
       throw error;
     }
-    this.mode.set('remote');
-    this.message.set('Supabase sync active.');
   }
 
   private readLocal(key: string): Movie[] | null {

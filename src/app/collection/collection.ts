@@ -92,8 +92,6 @@ export class CollectionComponent implements OnInit {
   }
 
   public get totalCount() { return this.movies().length; }
-  public get storageMode() { return this.storage.mode(); }
-  public get storageMessage() { return this.storage.message(); }
 
   public switchCollection(path: string) {
     if (!path || path === this.activeCollectionPath) {
