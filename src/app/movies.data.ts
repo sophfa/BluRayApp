@@ -2,6 +2,7 @@ export interface Movie {
   id: number;
   title: string;
   notes: string;
+  tags?: string[];
   platinumed?: boolean;
   platform?: string;
   format?: 'disc' | 'digital' | '';

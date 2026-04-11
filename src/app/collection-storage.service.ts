@@ -137,7 +137,8 @@ export class CollectionStorageService {
     return Array.isArray(value) && value.every(item => {
       if (!item || typeof item !== 'object') return false;
       const m = item as Movie;
-      return typeof m.id === 'number' && typeof m.title === 'string' && typeof m.notes === 'string';
+      const hasValidTags = m.tags === undefined || (Array.isArray(m.tags) && m.tags.every(tag => typeof tag === 'string'));
+      return typeof m.id === 'number' && typeof m.title === 'string' && typeof m.notes === 'string' && hasValidTags;
     });
   }
 }

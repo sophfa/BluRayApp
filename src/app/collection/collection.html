@@ -101,7 +101,8 @@
             <div class="movie-title">
               <span>{{ movie.title }}</span>
             </div>
-            <div class="movie-tags" *ngIf="movie.platinumed || movie.platform || movie.format">
+            <div class="movie-tags" *ngIf="(movie.tags?.length ?? 0) > 0 || movie.platinumed || movie.platform || movie.format">
+              <span class="tag tag-movie" *ngFor="let tag of movie.tags ?? []">{{ tag }}</span>
               <span class="tag tag-plat" *ngIf="movie.platinumed">Plat</span>
               <span class="tag tag-platform" *ngIf="movie.platform">{{ movie.platform }}</span>
               <span class="tag tag-disc" *ngIf="movie.format === 'disc'">Disc</span>
@@ -144,6 +145,14 @@
         />
       </div>
       <ng-container *ngIf="!isGameCollection">
+        <div class="form-group">
+          <label>Tags</label>
+          <input
+            type="text"
+            [(ngModel)]="modalTags"
+            placeholder="Comma-separated tags..."
+          />
+        </div>
         <div class="form-group">
           <label>Notes</label>
           <textarea rows="5" [(ngModel)]="modalMovie.notes" placeholder="Add your notes here..."></textarea>

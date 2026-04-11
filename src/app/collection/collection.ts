@@ -46,6 +46,7 @@ export class CollectionComponent implements OnInit {
   public showModal = false;
   public isEditing = false;
   public modalMovie: Partial<Movie> = {};
+  public modalTags = '';
   public editingMovieId: number | null = null;
   public movieMenuItems: MenuItem[] = [];
 
@@ -84,7 +85,13 @@ export class CollectionComponent implements OnInit {
   public get filtered(): Movie[] {
     let list = this.movies();
     const q = this.searchQuery.trim().toLowerCase();
-    if (q) list = list.filter(m => m.title.toLowerCase().includes(q) || String(m.id).includes(q));
+    if (q) {
+      list = list.filter(m =>
+        m.title.toLowerCase().includes(q) ||
+        String(m.id).includes(q) ||
+        (m.tags ?? []).some(tag => tag.toLowerCase().includes(q))
+      );
+    }
     return [...list].sort((a, b) => {
       const cmp = this.sortField === 'id' ? a.id - b.id : a.title.localeCompare(b.title);
       return this.sortDir === 'asc' ? cmp : -cmp;
@@ -119,10 +126,12 @@ export class CollectionComponent implements OnInit {
       id: maxId + 1,
       title: '',
       notes: '',
+      tags: [],
       platinumed: false,
       platform: '',
       format: '',
     };
+    this.modalTags = '';
     this.editingMovieId = null;
     this.isEditing = false;
     this.showModal = true;
@@ -150,6 +159,7 @@ export class CollectionComponent implements OnInit {
       });
     }
     this.save();
+    this.modalTags = '';
     this.editingMovieId = null;
     this.showModal = false;
   }
@@ -164,6 +174,7 @@ export class CollectionComponent implements OnInit {
 
   public openEdit(movie: Movie) {
     this.modalMovie = { ...movie };
+    this.modalTags = (movie.tags ?? []).join(', ');
     this.editingMovieId = movie.id;
     this.isEditing = true;
     this.showModal = true;
@@ -227,6 +238,7 @@ export class CollectionComponent implements OnInit {
     return {
       title,
       notes: this.normalizeText(this.modalMovie.notes),
+      tags: this.parseTags(this.modalTags),
     };
   }
 
@@ -236,6 +248,27 @@ export class CollectionComponent implements OnInit {
 
   private normalizeFormat(value: unknown): Movie['format'] {
     return value === 'disc' || value === 'digital' ? value : '';
+  }
+
+  private parseTags(value: unknown) {
+    if (typeof value !== 'string') {
+      return [];
+    }
+
+    const seen = new Set<string>();
+    const tags: string[] = [];
+
+    for (const rawTag of value.split(',')) {
+      const tag = rawTag.trim();
+      const key = tag.toLowerCase();
+      if (!tag || seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      tags.push(tag);
+    }
+
+    return tags;
   }
 
   private saveGameMovie(list: Movie[], draft: Omit<Movie, 'id'>) {
@@ -271,6 +304,7 @@ export class CollectionComponent implements OnInit {
       id: index + 1,
       title: movie.title,
       notes: this.normalizeText(movie.notes),
+      tags: Array.isArray(movie.tags) ? movie.tags.filter(tag => typeof tag === 'string' && tag.trim()).map(tag => tag.trim()) : [],
       platform: this.normalizeText(movie.platform),
       format: this.normalizeFormat(movie.format),
       platinumed: !!movie.platinumed,
