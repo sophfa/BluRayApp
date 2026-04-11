@@ -31,9 +31,6 @@ export class App implements OnInit {
   public notesTarget: Movie | null = null;
   public notesDraft = '';
 
-  public storageMode = this.storage.mode;
-  public storageMessage = this.storage.message;
-
   public constructor(private storage: CollectionStorageService) {}
 
   public ngOnInit() {
@@ -68,6 +65,8 @@ export class App implements OnInit {
   }
 
   public get totalCount() { return this.movies().length; }
+  public get storageMode() { return this.storage.mode(); }
+  public get storageMessage() { return this.storage.message(); }
 
   public setSort(field: SortField) {
     if (this.sortField === field) {

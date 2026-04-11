@@ -12,12 +12,12 @@
 
   <div
     class="sync-banner"
-    [class.sync-banner--remote]="storageMode() === 'remote'"
-    [class.sync-banner--error]="storageMode() === 'error'"
-    [class.sync-banner--local]="storageMode() === 'local'"
+    [class.sync-banner--remote]="storageMode === 'remote'"
+    [class.sync-banner--error]="storageMode === 'error'"
+    [class.sync-banner--local]="storageMode === 'local'"
   >
     <span class="sync-banner__dot"></span>
-    <span>{{ storageMessage() }}</span>
+    <span>{{ storageMessage }}</span>
   </div>
 
   <!-- Controls -->
@@ -113,7 +113,7 @@
   <div class="modal-backdrop" *ngIf="deleteTarget" (click)="deleteTarget = null">
     <div class="modal modal-small" (click)="$event.stopPropagation()">
       <h2>Delete Movie?</h2>
-      <p class="modal-msg">Remove <strong>{{ deleteTarget?.title }}</strong> from your collection?</p>
+      <p class="modal-msg">Remove <strong>{{ deleteTarget.title }}</strong> from your collection?</p>
       <div class="modal-actions">
         <button class="btn btn-danger" (click)="doDelete()">Delete</button>
         <button class="btn btn-ghost" (click)="deleteTarget = null">Cancel</button>
