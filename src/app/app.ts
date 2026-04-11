@@ -1,6 +1,10 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import { ConfirmationService, MenuItem } from 'primeng/api';
+import { ButtonModule } from 'primeng/button';
+import { ConfirmPopupModule } from 'primeng/confirmpopup';
+import { MenuModule } from 'primeng/menu';
 import { Movie, INITIAL_MOVIES } from './movies.data';
 import { CollectionStorageService } from './collection-storage.service';
 
@@ -10,7 +14,7 @@ type SortDir = 'asc' | 'desc';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ButtonModule, ConfirmPopupModule, MenuModule],
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })
@@ -25,14 +29,15 @@ export class App implements OnInit {
   public showModal = false;
   public isEditing = false;
   public modalMovie: Partial<Movie> = {};
-
-  public deleteTarget: Movie | null = null;
-
   public notesTarget: Movie | null = null;
   public notesDraft = '';
+  public movieMenuItems: MenuItem[] = [];
 
-  public constructor(private storage: CollectionStorageService) {}
-//
+  public constructor(
+    private storage: CollectionStorageService,
+    private confirmationService: ConfirmationService
+  ) {}
+
   public ngOnInit() {
     void this.initialize();
   }
@@ -84,13 +89,6 @@ export class App implements OnInit {
     this.showModal = true;
   }
 
-  public openEdit(movie: Movie, event: Event) {
-    event.stopPropagation();
-    this.modalMovie = { ...movie };
-    this.isEditing = true;
-    this.showModal = true;
-  }
-
   public saveModal() {
     if (!this.modalMovie.title?.trim()) return;
     if (this.isEditing) {
@@ -107,20 +105,20 @@ export class App implements OnInit {
     this.showModal = false;
   }
 
-  public confirmDelete(movie: Movie, event: Event) {
-    event.stopPropagation();
-    this.deleteTarget = movie;
-  }
-
-  public doDelete() {
-    if (!this.deleteTarget) return;
-    this.movies.update(list => list.filter(m => m.id !== this.deleteTarget!.id));
+  public deleteMovie(movie: Movie) {
+    this.movies.update(list => list.filter(m => m.id !== movie.id));
     this.save();
-    this.deleteTarget = null;
   }
 
-  public openNotes(movie: Movie, event: Event) {
-    event.stopPropagation();
+  public openEdit(movie: Movie, event?: Event) {
+    event?.stopPropagation();
+    this.modalMovie = { ...movie };
+    this.isEditing = true;
+    this.showModal = true;
+  }
+
+  public openNotes(movie: Movie, event?: Event) {
+    event?.stopPropagation();
     this.notesTarget = movie;
     this.notesDraft = movie.notes;
   }
@@ -131,6 +129,63 @@ export class App implements OnInit {
     this.movies.update(list => list.map(m => m.id === id ? { ...m, notes: this.notesDraft } : m));
     this.save();
     this.notesTarget = null;
+  }
+
+  public openMovieMenu(
+    movie: Movie,
+    menu: { toggle(event: Event): void },
+    event: Event
+  ) {
+    event.stopPropagation();
+
+    this.movieMenuItems = [
+      {
+        label: 'Edit title',
+        icon: 'pi pi-pencil',
+        command: () => this.openEdit(movie)
+      },
+      {
+        label: 'Edit note',
+        icon: 'pi pi-file-edit',
+        command: () => this.openNotes(movie)
+      },
+      {
+        separator: true
+      },
+      {
+        label: 'Delete movie',
+        icon: 'pi pi-trash',
+        styleClass: 'danger-menu-item',
+        command: (menuEvent) => this.confirmDelete(movie, menuEvent.originalEvent as Event)
+      }
+    ];
+
+    menu.toggle(event);
+  }
+
+  public confirmDelete(movie: Movie, event: Event) {
+    event.stopPropagation();
+
+    const target = (event.currentTarget ?? event.target) as HTMLElement | null;
+    const message = `Delete "${movie.title}"? This cannot be undone.`;
+
+    if (!target) {
+      if (window.confirm(message)) {
+        this.deleteMovie(movie);
+      }
+      return;
+    }
+
+    this.confirmationService.confirm({
+      target,
+      message,
+      icon: 'pi pi-exclamation-triangle',
+      acceptLabel: 'Delete',
+      rejectLabel: 'Cancel',
+      acceptButtonStyleClass: 'p-button-danger p-button-sm',
+      rejectButtonStyleClass: 'p-button-text p-button-sm',
+      accept: () => this.deleteMovie(movie)
+    });
   }
 
   public trackById(_: number, m: Movie) { return m.id; }

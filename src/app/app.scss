@@ -17,7 +17,10 @@
     gap: 14px;
   }
 
-  &-icon { font-size: 2.4rem; }
+  &-icon {
+    font-size: 2rem;
+    color: #8ea6ff;
+  }
 
   h1 {
     font-size: 1.7rem;
@@ -98,6 +101,7 @@
   position: absolute;
   left: 12px;
   font-size: 0.9rem;
+  color: #666;
   pointer-events: none;
 }
 
@@ -131,6 +135,20 @@
 .action-btns {
   display: flex;
   gap: 8px;
+}
+
+:host ::ng-deep .app-add-button.p-button {
+  background: #4f46e5;
+  border-color: #4f46e5;
+  color: #fff;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+
+  &:hover {
+    background: #4338ca;
+    border-color: #4338ca;
+  }
 }
 
 .btn {
@@ -250,24 +268,70 @@
 
 .movie-actions {
   display: flex;
-  gap: 2px;
   opacity: 0;
   transition: opacity 0.15s;
 
   .movie-row:hover & { opacity: 1; }
 }
 
-.icon-btn {
-  background: none;
+:host ::ng-deep .movie-menu-button.p-button {
+  width: 2rem;
+  height: 2rem;
+  min-width: 2rem;
   border: none;
-  cursor: pointer;
-  padding: 4px 6px;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  transition: background 0.15s;
+  border-radius: 999px;
+  background: transparent;
+  color: #8b8b9d;
+  box-shadow: none;
 
-  &:hover { background: #25253a; }
-  &-danger:hover { background: #3a1515; }
+  &:hover {
+    background: #25253a;
+    color: #f4f4ff;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #6f7cff;
+    outline-offset: 2px;
+  }
+}
+
+:host ::ng-deep .movie-menu.p-menu {
+  background: #18181f;
+  border: 1px solid #2a2a38;
+  border-radius: 12px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.38);
+}
+
+:host ::ng-deep .movie-menu .p-menu-item-link {
+  color: #d8d8e6;
+}
+
+:host ::ng-deep .movie-menu .p-menu-item-link:hover {
+  background: #25253a;
+}
+
+:host ::ng-deep .movie-menu .danger-menu-item .p-menu-item-link {
+  color: #f87171;
+}
+
+:host ::ng-deep .p-confirmpopup {
+  background: #18181f;
+  border: 1px solid #2a2a38;
+  border-radius: 14px;
+  color: #e2e2e8;
+}
+
+:host ::ng-deep .p-confirmpopup .p-confirmpopup-message {
+  color: #d0d0dc;
+}
+
+:host ::ng-deep .p-confirmpopup .p-button.p-confirm-popup-accept {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+:host ::ng-deep .p-confirmpopup .p-button.p-confirm-popup-reject {
+  color: #a8a8b8;
 }
 
 .empty {

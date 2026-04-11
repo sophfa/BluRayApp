@@ -1,8 +1,11 @@
 <div class="app">
+  <p-menu #movieMenu [model]="movieMenuItems" [popup]="true" styleClass="movie-menu"></p-menu>
+  <p-confirmpopup></p-confirmpopup>
+
   <!-- Header -->
   <header class="header">
     <div class="header-left">
-      <span class="header-icon">🎬</span>
+      <i class="header-icon pi pi-video" aria-hidden="true"></i>
       <div>
         <h1>Blu-ray Collection</h1>
         <p class="header-sub">{{ totalCount }} movies</p>
@@ -23,18 +26,25 @@
   <!-- Controls -->
   <div class="controls">
     <div class="search-wrap">
-      <span class="search-icon">🔍</span>
+      <span class="search-icon pi pi-search" aria-hidden="true"></span>
       <input
         class="search-input"
         type="text"
         placeholder="Search by title or number..."
         [(ngModel)]="searchQuery"
       />
-      <button *ngIf="searchQuery" class="clear-btn" (click)="searchQuery = ''">✕</button>
+      <button *ngIf="searchQuery" class="clear-btn" (click)="searchQuery = ''" aria-label="Clear search">
+        <i class="pi pi-times" aria-hidden="true"></i>
+      </button>
     </div>
 
     <div class="action-btns">
-      <button class="btn btn-primary" (click)="openAdd()">+ Add Movie</button>
+      <p-button
+        label="Add Movie"
+        icon="pi pi-plus"
+        styleClass="app-add-button"
+        (onClick)="openAdd()"
+      ></p-button>
     </div>
   </div>
 
@@ -68,12 +78,20 @@
         <div class="movie-num">{{ movie.id }}</div>
         <div class="movie-title">
           <span>{{ movie.title }}</span>
-          <span *ngIf="movie.notes" class="has-notes" title="{{ movie.notes }}">📝</span>
+          <i
+            *ngIf="movie.notes"
+            class="has-notes pi pi-file-edit"
+            [title]="movie.notes"
+            aria-label="Movie has notes"
+          ></i>
         </div>
         <div class="movie-actions">
-          <button class="icon-btn" title="Edit title" (click)="openEdit(movie, $event)">✏️</button>
-          <button class="icon-btn" title="Notes" (click)="openNotes(movie, $event)">📝</button>
-          <button class="icon-btn icon-btn-danger" title="Delete" (click)="confirmDelete(movie, $event)">🗑️</button>
+          <p-button
+            icon="pi pi-ellipsis-v"
+            styleClass="movie-menu-button"
+            ariaLabel="Movie actions"
+            (onClick)="openMovieMenu(movie, movieMenu, $event)"
+          ></p-button>
         </div>
       </div>
 
@@ -105,18 +123,6 @@
           {{ isEditing ? 'Save' : 'Add' }}
         </button>
         <button class="btn btn-ghost" (click)="showModal = false">Cancel</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Delete Confirm Modal -->
-  <div class="modal-backdrop" *ngIf="deleteTarget" (click)="deleteTarget = null">
-    <div class="modal modal-small" (click)="$event.stopPropagation()">
-      <h2>Delete Movie?</h2>
-      <p class="modal-msg">Remove <strong>{{ deleteTarget.title }}</strong> from your collection?</p>
-      <div class="modal-actions">
-        <button class="btn btn-danger" (click)="doDelete()">Delete</button>
-        <button class="btn btn-ghost" (click)="deleteTarget = null">Cancel</button>
       </div>
     </div>
   </div>
