@@ -49,7 +49,7 @@
       <input
         class="search-input"
         type="text"
-        placeholder="Search by title or number..."
+        placeholder="Search by title, number, or tag..."
         [(ngModel)]="searchQuery"
       />
       <button *ngIf="searchQuery" class="clear-btn" (click)="searchQuery = ''" aria-label="Clear search">
@@ -102,7 +102,13 @@
               <span>{{ movie.title }}</span>
             </div>
             <div class="movie-tags" *ngIf="(movie.tags?.length ?? 0) > 0 || movie.platinumed || movie.platform || movie.format">
-              <span class="tag tag-movie" *ngFor="let tag of movie.tags ?? []">{{ tag }}</span>
+              <span
+                class="tag tag-movie"
+                *ngFor="let tag of movie.tags ?? []; let tagIndex = index"
+                [ngClass]="'tag-movie-' + (tagIndex % 6)"
+              >
+                {{ tag }}
+              </span>
               <span class="tag tag-plat" *ngIf="movie.platinumed">Plat</span>
               <span class="tag tag-platform" *ngIf="movie.platform">{{ movie.platform }}</span>
               <span class="tag tag-disc" *ngIf="movie.format === 'disc'">Disc</span>
