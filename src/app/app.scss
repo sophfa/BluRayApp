@@ -88,15 +88,58 @@
   }
 }
 
-.session-bar {
+.session-menu-wrap {
   position: fixed;
   top: 1rem;
   right: 1rem;
   z-index: 300;
-  display: flex;
+}
+
+.session-menu__toggle {
+  display: inline-flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 0.9rem;
+  gap: 0.7rem;
+  padding: 0.7rem 0.95rem;
+  border: 1px solid rgba(79, 70, 229, 0.22);
+  border-radius: 999px;
+  background: rgba(15, 15, 19, 0.88);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.28);
+  color: #eef2ff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.session-menu__toggle-label {
+  font-size: 0.88rem;
+}
+
+.session-menu__toggle-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 1.3rem;
+  color: #8ea6ff;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.session-menu__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 299;
+}
+
+.session-menu {
+  position: absolute;
+  top: calc(100% + 0.65rem);
+  right: 0;
+  z-index: 301;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  min-width: min(22rem, calc(100vw - 2rem));
+  padding: 0.95rem;
   border: 1px solid rgba(79, 70, 229, 0.22);
   border-radius: 16px;
   background: rgba(15, 15, 19, 0.88);
@@ -104,32 +147,32 @@
   box-shadow: 0 18px 36px rgba(0, 0, 0, 0.28);
 }
 
-.session-bar__identity {
+.session-menu__identity {
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
 
-.session-bar__label {
+.session-menu__label {
   color: #8ea6ff;
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.14em;
 }
 
-.session-bar__value {
-  max-width: 18rem;
+.session-menu__value {
   color: #eef2ff;
   font-size: 0.9rem;
-  white-space: nowrap;
+  line-height: 1.4;
+  word-break: break-word;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.session-bar__button {
-  padding: 0.6rem 0.85rem;
+.session-menu__button {
+  width: 100%;
+  padding: 0.7rem 0.9rem;
   border: 1px solid #2f3650;
-  border-radius: 999px;
+  border-radius: 12px;
   background: transparent;
   color: #d8def4;
   font: inherit;
@@ -142,13 +185,16 @@
 }
 
 @media (max-width: 640px) {
-  .session-bar {
-    left: 1rem;
-    right: 1rem;
-    justify-content: space-between;
+  .session-menu-wrap {
+    top: 0.75rem;
+    right: 0.75rem;
   }
 
-  .session-bar__value {
-    max-width: 11rem;
+  .session-menu__toggle {
+    padding: 0.65rem 0.85rem;
+  }
+
+  .session-menu {
+    min-width: min(18rem, calc(100vw - 1.5rem));
   }
 }

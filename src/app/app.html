@@ -5,13 +5,22 @@
 
   <ng-container *ngIf="!(isLoading$ | async)">
     <ng-container *ngIf="isAuthenticated$ | async; else loggedOut">
-      <header class="session-bar">
-        <div class="session-bar__identity" *ngIf="userDisplay$ | async as userDisplay">
-          <span class="session-bar__label">Signed in</span>
-          <span class="session-bar__value">{{ userDisplay }}</span>
-        </div>
-        <button class="session-bar__button" (click)="logOut()">Log out</button>
-      </header>
+      <div class="session-menu-wrap">
+        <button class="session-menu__toggle" type="button" (click)="toggleSessionMenu()">
+          <span class="session-menu__toggle-label">Account</span>
+          <span class="session-menu__toggle-icon" aria-hidden="true">{{ menuOpen ? '^' : 'v' }}</span>
+        </button>
+
+        <div class="session-menu__backdrop" *ngIf="menuOpen" (click)="closeSessionMenu()"></div>
+
+        <section class="session-menu" *ngIf="menuOpen">
+          <div class="session-menu__identity" *ngIf="userDisplay$ | async as userDisplay">
+            <span class="session-menu__label">Signed in</span>
+            <span class="session-menu__value">{{ userDisplay }}</span>
+          </div>
+          <button class="session-menu__button" type="button" (click)="logOut()">Log out</button>
+        </section>
+      </div>
 
       <router-outlet></router-outlet>
     </ng-container>

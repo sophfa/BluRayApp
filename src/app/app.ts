@@ -16,6 +16,7 @@ export class App {
   protected readonly returnTo = document.baseURI;
   protected readonly isLoading$ = this.auth.isLoading$;
   protected readonly isAuthenticated$ = this.auth.isAuthenticated$;
+  protected menuOpen = false;
   protected readonly userDisplay$ = this.auth.user$.pipe(
     map((user) => user?.email ?? user?.name ?? user?.nickname ?? 'Signed in')
   );
@@ -46,7 +47,16 @@ export class App {
     });
   }
 
+  protected toggleSessionMenu() {
+    this.menuOpen = !this.menuOpen;
+  }
+
+  protected closeSessionMenu() {
+    this.menuOpen = false;
+  }
+
   protected logOut() {
+    this.closeSessionMenu();
     void this.auth.logout({
       logoutParams: {
         returnTo: this.returnTo
