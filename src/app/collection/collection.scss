@@ -399,6 +399,35 @@
   textarea { resize: vertical; }
 }
 
+.checkbox-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 46px;
+  padding: 10px 14px;
+  margin-bottom: 0;
+  border: 1px solid #2a2a38;
+  border-radius: 8px;
+  background: #0f0f13;
+  color: #d0d0dc;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.9rem;
+
+  input {
+    width: 1rem;
+    height: 1rem;
+    margin: 0;
+    flex: 0 0 auto;
+    accent-color: #4f46e5;
+  }
+
+  span {
+    display: block;
+    line-height: 1;
+  }
+}
+
 .format-btns {
   display: flex;
   gap: 8px;

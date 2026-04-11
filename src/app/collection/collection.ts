@@ -46,11 +46,9 @@ export class CollectionComponent implements OnInit {
   public showModal = false;
   public isEditing = false;
   public modalMovie: Partial<Movie> = {};
+  public editingMovieId: number | null = null;
   public notesTarget: Movie | null = null;
   public notesDraft = '';
-  public detailsTarget: Movie | null = null;
-  public detailsPlatform = '';
-  public detailsFormat = '';
   public movieMenuItems: MenuItem[] = [];
 
   public constructor(
@@ -73,7 +71,11 @@ export class CollectionComponent implements OnInit {
   private async initialize() {
     const initial = INITIAL_DATA[this.collectionKey] ?? [];
     const loaded = await this.storage.loadMovies(this.collectionKey, initial);
-    this.movies.set(loaded);
+    const normalized = this.isGameCollection ? this.normalizeGameIds(loaded) : loaded;
+    if (this.isGameCollection && this.gameIdsChanged(loaded, normalized)) {
+      void this.storage.saveMovies(this.collectionKey, normalized);
+    }
+    this.movies.set(normalized);
     this.isLoaded = true;
   }
 
@@ -92,6 +94,9 @@ export class CollectionComponent implements OnInit {
   }
 
   public get totalCount() { return this.movies().length; }
+  public get isGameCollection() { return this.itemLabel === 'game'; }
+  public get primarySortField(): SortField { return 'id'; }
+  public get primarySortLabel() { return this.isGameCollection ? 'Order' : '#'; }
 
   public switchCollection(path: string) {
     if (!path || path === this.activeCollectionPath) {
@@ -112,35 +117,56 @@ export class CollectionComponent implements OnInit {
 
   public openAdd() {
     const maxId = Math.max(...this.movies().map(m => m.id), 0);
-    this.modalMovie = { id: maxId + 1, title: '', notes: '' };
+    this.modalMovie = {
+      id: maxId + 1,
+      title: '',
+      notes: '',
+      platinumed: false,
+      platform: '',
+      format: '',
+    };
+    this.editingMovieId = null;
     this.isEditing = false;
     this.showModal = true;
   }
 
   public saveModal() {
-    if (!this.modalMovie.title?.trim()) return;
-    if (this.isEditing) {
+    const title = this.modalMovie.title?.trim();
+    if (!title) return;
+    const draft = this.buildMovieDraft(title);
+    if (this.isGameCollection) {
+      this.movies.update(list => this.saveGameMovie(list, draft));
+      this.sortField = 'id';
+      this.sortDir = 'asc';
+    } else if (this.isEditing) {
       this.movies.update(list => list.map(m =>
-        m.id === this.modalMovie.id ? { ...m, title: this.modalMovie.title! } : m
+        m.id === this.modalMovie.id ? { ...m, ...draft } : m
       ));
     } else {
-      this.movies.update(list => [...list, {
-        id: this.modalMovie.id!,
-        title: this.modalMovie.title!.trim(),
-        notes: ''
-      }]);
+      this.movies.update(list => {
+        const nextMovie: Movie = {
+          id: this.modalMovie.id!,
+          ...draft,
+        };
+        return [...list, nextMovie];
+      });
     }
     this.save();
+    this.editingMovieId = null;
     this.showModal = false;
   }
 
   public deleteMovie(movie: Movie) {
-    this.movies.update(list => list.filter(m => m.id !== movie.id));
+    this.movies.update(list => {
+      const next = list.filter(m => m.id !== movie.id);
+      return this.isGameCollection ? this.normalizeGameIds(next) : next;
+    });
     this.save();
   }
 
   public openEdit(movie: Movie) {
     this.modalMovie = { ...movie };
+    this.editingMovieId = movie.id;
     this.isEditing = true;
     this.showModal = true;
   }
@@ -158,43 +184,16 @@ export class CollectionComponent implements OnInit {
     this.notesTarget = null;
   }
 
-  public togglePlatinum(movie: Movie) {
-    this.movies.update(list => list.map(m =>
-      m.id === movie.id ? { ...m, platinumed: !m.platinumed } : m
-    ));
-    this.save();
-  }
-
-  public openDetails(movie: Movie) {
-    this.detailsTarget = movie;
-    this.detailsPlatform = movie.platform ?? '';
-    this.detailsFormat = movie.format ?? '';
-  }
-
-  public saveDetails() {
-    if (!this.detailsTarget) return;
-    const id = this.detailsTarget.id;
-    this.movies.update(list => list.map(m => m.id === id ? {
-      ...m,
-      platform: this.detailsPlatform.trim(),
-      format: this.detailsFormat as 'disc' | 'digital' | ''
-    } : m));
-    this.save();
-    this.detailsTarget = null;
-  }
-
   public openMovieMenu(movie: Movie, menu: { toggle(e: Event): void }, event: Event) {
     event.stopPropagation();
-    const items: MenuItem[] = [
-      { label: 'Edit title', icon: 'pi pi-pencil', command: () => this.openEdit(movie) },
-      { label: 'Edit note', icon: 'pi pi-file-edit', command: () => this.openNotes(movie) },
-    ];
-    if (this.itemLabel === 'game') {
-      items.push(
-        { label: movie.platinumed ? 'Remove Platinum' : 'Mark Platinumed', icon: 'pi pi-trophy', command: () => this.togglePlatinum(movie) },
-        { label: 'Platform & Format', icon: 'pi pi-tag', command: () => this.openDetails(movie) },
-      );
-    }
+    const items: MenuItem[] = this.isGameCollection
+      ? [
+          { label: 'Edit game', icon: 'pi pi-pencil', command: () => this.openEdit(movie) },
+        ]
+      : [
+          { label: 'Edit title', icon: 'pi pi-pencil', command: () => this.openEdit(movie) },
+          { label: 'Edit note', icon: 'pi pi-file-edit', command: () => this.openNotes(movie) },
+        ];
     items.push(
       { separator: true },
       {
@@ -229,4 +228,74 @@ export class CollectionComponent implements OnInit {
   }
 
   public trackById(_: number, m: Movie) { return m.id; }
+
+  private buildMovieDraft(title: string): Omit<Movie, 'id'> {
+    if (this.isGameCollection) {
+      return {
+        title,
+        notes: this.normalizeText(this.modalMovie.notes),
+        platform: this.normalizeText(this.modalMovie.platform),
+        format: this.normalizeFormat(this.modalMovie.format),
+        platinumed: !!this.modalMovie.platinumed,
+      };
+    }
+
+    return {
+      title,
+      notes: this.normalizeText(this.modalMovie.notes),
+    };
+  }
+
+  private normalizeText(value: unknown) {
+    return typeof value === 'string' ? value.trim() : '';
+  }
+
+  private normalizeFormat(value: unknown): Movie['format'] {
+    return value === 'disc' || value === 'digital' ? value : '';
+  }
+
+  private saveGameMovie(list: Movie[], draft: Omit<Movie, 'id'>) {
+    const targetPosition = this.normalizeGamePosition(this.modalMovie.id, list.length + (this.isEditing ? 0 : 1));
+
+    if (this.isEditing && this.editingMovieId !== null) {
+      const currentMovie = list.find(movie => movie.id === this.editingMovieId);
+      if (!currentMovie) {
+        return list;
+      }
+
+      const next = list.filter(movie => movie.id !== this.editingMovieId);
+      next.splice(targetPosition - 1, 0, { ...currentMovie, ...draft, id: targetPosition });
+      return this.normalizeGameIds(next);
+    }
+
+    const next = [...list];
+    next.splice(targetPosition - 1, 0, { id: targetPosition, ...draft });
+    return this.normalizeGameIds(next);
+  }
+
+  private normalizeGamePosition(value: unknown, maxPosition: number) {
+    const numeric = typeof value === 'number' ? value : Number(value);
+    if (!Number.isFinite(numeric)) {
+      return maxPosition;
+    }
+
+    return Math.min(Math.max(Math.round(numeric), 1), maxPosition);
+  }
+
+  private normalizeGameIds(list: Movie[]) {
+    return list.map((movie, index) => ({
+      id: index + 1,
+      title: movie.title,
+      notes: this.normalizeText(movie.notes),
+      platform: this.normalizeText(movie.platform),
+      format: this.normalizeFormat(movie.format),
+      platinumed: !!movie.platinumed,
+    }));
+  }
+
+  private gameIdsChanged(original: Movie[], normalized: Movie[]) {
+    return original.length !== normalized.length || original.some((movie, index) =>
+      movie.id !== normalized[index]?.id
+    );
+  }
 }

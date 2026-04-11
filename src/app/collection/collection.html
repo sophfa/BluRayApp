@@ -68,8 +68,8 @@
 
   <!-- Sort header -->
   <div class="sort-header">
-    <button class="sort-btn" (click)="setSort('id')">
-      # <span *ngIf="sortField === 'id'">{{ sortDir === 'asc' ? '↑' : '↓' }}</span>
+    <button class="sort-btn" (click)="setSort(primarySortField)">
+      {{ primarySortLabel }} <span *ngIf="sortField === primarySortField">{{ sortDir === 'asc' ? '↑' : '↓' }}</span>
     </button>
     <button class="sort-btn sort-title" (click)="setSort('title')">
       Title <span *ngIf="sortField === 'title'">{{ sortDir === 'asc' ? '↑' : '↓' }}</span>
@@ -131,8 +131,8 @@
     <div class="modal" (click)="$event.stopPropagation()">
       <h2>{{ isEditing ? 'Edit' : 'Add' }} {{ itemLabel }}</h2>
       <div class="form-group">
-        <label>Number</label>
-        <input type="number" [(ngModel)]="modalMovie.id" [disabled]="isEditing" />
+        <label>{{ isGameCollection ? 'Order' : 'Number' }}</label>
+        <input type="number" [(ngModel)]="modalMovie.id" [disabled]="isEditing && !isGameCollection" />
       </div>
       <div class="form-group">
         <label>Title</label>
@@ -143,34 +143,40 @@
           (keyup.enter)="saveModal()"
         />
       </div>
+      <ng-container *ngIf="isGameCollection">
+        <div class="form-group">
+          <label>System</label>
+          <input
+            type="text"
+            [(ngModel)]="modalMovie.platform"
+            placeholder="e.g. PS5, PS4, Switch..."
+          />
+        </div>
+        <div class="form-group">
+          <label>Format</label>
+          <div class="format-btns">
+            <button type="button" class="format-btn" [class.active]="modalMovie.format === ''" (click)="modalMovie.format = ''">None</button>
+            <button type="button" class="format-btn" [class.active]="modalMovie.format === 'disc'" (click)="modalMovie.format = 'disc'">Disc</button>
+            <button type="button" class="format-btn" [class.active]="modalMovie.format === 'digital'" (click)="modalMovie.format = 'digital'">Digital</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Progress</label>
+          <label class="checkbox-row">
+            <input type="checkbox" [(ngModel)]="modalMovie.platinumed" />
+            <span>Platinumed</span>
+          </label>
+        </div>
+        <div class="form-group">
+          <label>Notes</label>
+          <textarea rows="5" [(ngModel)]="modalMovie.notes" placeholder="Add your notes here..."></textarea>
+        </div>
+      </ng-container>
       <div class="modal-actions">
         <button class="btn btn-primary" (click)="saveModal()" [disabled]="!modalMovie.title?.trim()">
           {{ isEditing ? 'Save' : 'Add' }}
         </button>
         <button class="btn btn-ghost" (click)="showModal = false">Cancel</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Game Details Modal -->
-  <div class="modal-backdrop" *ngIf="detailsTarget" (click)="detailsTarget = null">
-    <div class="modal" (click)="$event.stopPropagation()">
-      <h2>Details — {{ detailsTarget!.title }}</h2>
-      <div class="form-group">
-        <label>Platform</label>
-        <input type="text" [(ngModel)]="detailsPlatform" placeholder="e.g. PS5, PS4, PS3, Switch..." (keyup.enter)="saveDetails()" />
-      </div>
-      <div class="form-group">
-        <label>Format</label>
-        <div class="format-btns">
-          <button class="format-btn" [class.active]="detailsFormat === ''" (click)="detailsFormat = ''">None</button>
-          <button class="format-btn" [class.active]="detailsFormat === 'disc'" (click)="detailsFormat = 'disc'">Disc</button>
-          <button class="format-btn" [class.active]="detailsFormat === 'digital'" (click)="detailsFormat = 'digital'">Digital</button>
-        </div>
-      </div>
-      <div class="modal-actions">
-        <button class="btn btn-primary" (click)="saveDetails()">Save</button>
-        <button class="btn btn-ghost" (click)="detailsTarget = null">Cancel</button>
       </div>
     </div>
   </div>
