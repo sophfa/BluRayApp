@@ -77,6 +77,8 @@ npm start
 
 The workflow in [.github/workflows/deploy.yml](/mnt/c/Repositories/BluRayApp/.github/workflows/deploy.yml) builds the Angular app and deploys it to GitHub Pages on pushes to `main`.
 
+Before the first successful deploy, open your GitHub repository settings and set `Settings -> Pages -> Source` to `GitHub Actions`. GitHub requires custom Pages workflows to be enabled for the repository before `actions/configure-pages` can read the Pages site configuration.
+
 - For a standard project site, no extra config is needed.
 - For a custom domain at the root, set the repository variable `PAGES_BASE_PATH` to `/`.
 - For a custom subpath, set `PAGES_BASE_PATH` to that path, for example `/collection`.
