@@ -143,6 +143,12 @@
           (keyup.enter)="saveModal()"
         />
       </div>
+      <ng-container *ngIf="!isGameCollection">
+        <div class="form-group">
+          <label>Notes</label>
+          <textarea rows="5" [(ngModel)]="modalMovie.notes" placeholder="Add your notes here..."></textarea>
+        </div>
+      </ng-container>
       <ng-container *ngIf="isGameCollection">
         <div class="form-group">
           <label>System</label>
@@ -177,20 +183,6 @@
           {{ isEditing ? 'Save' : 'Add' }}
         </button>
         <button class="btn btn-ghost" (click)="showModal = false">Cancel</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Notes Modal -->
-  <div class="modal-backdrop" *ngIf="notesTarget" (click)="notesTarget = null">
-    <div class="modal" (click)="$event.stopPropagation()">
-      <h2>Notes — {{ notesTarget!.title }}</h2>
-      <div class="form-group">
-        <textarea rows="5" [(ngModel)]="notesDraft" placeholder="Add your notes here..."></textarea>
-      </div>
-      <div class="modal-actions">
-        <button class="btn btn-primary" (click)="saveNotes()">Save Notes</button>
-        <button class="btn btn-ghost" (click)="notesTarget = null">Cancel</button>
       </div>
     </div>
   </div>

@@ -47,8 +47,6 @@ export class CollectionComponent implements OnInit {
   public isEditing = false;
   public modalMovie: Partial<Movie> = {};
   public editingMovieId: number | null = null;
-  public notesTarget: Movie | null = null;
-  public notesDraft = '';
   public movieMenuItems: MenuItem[] = [];
 
   public constructor(
@@ -171,19 +169,6 @@ export class CollectionComponent implements OnInit {
     this.showModal = true;
   }
 
-  public openNotes(movie: Movie) {
-    this.notesTarget = movie;
-    this.notesDraft = movie.notes;
-  }
-
-  public saveNotes() {
-    if (!this.notesTarget) return;
-    const id = this.notesTarget.id;
-    this.movies.update(list => list.map(m => m.id === id ? { ...m, notes: this.notesDraft } : m));
-    this.save();
-    this.notesTarget = null;
-  }
-
   public openMovieMenu(movie: Movie, menu: { toggle(e: Event): void }, event: Event) {
     event.stopPropagation();
     const items: MenuItem[] = this.isGameCollection
@@ -191,8 +176,7 @@ export class CollectionComponent implements OnInit {
           { label: 'Edit game', icon: 'pi pi-pencil', command: () => this.openEdit(movie) },
         ]
       : [
-          { label: 'Edit title', icon: 'pi pi-pencil', command: () => this.openEdit(movie) },
-          { label: 'Edit note', icon: 'pi pi-file-edit', command: () => this.openNotes(movie) },
+          { label: 'Edit movie', icon: 'pi pi-pencil', command: () => this.openEdit(movie) },
         ];
     items.push(
       { separator: true },
