@@ -156,7 +156,8 @@ export class App implements OnInit {
         label: 'Delete movie',
         icon: 'pi pi-trash',
         styleClass: 'danger-menu-item',
-        command: (menuEvent) => this.confirmDelete(movie, menuEvent.originalEvent as Event)
+        command: (menuEvent: { originalEvent?: Event }) =>
+          this.confirmDelete(movie, menuEvent.originalEvent ?? event)
       }
     ];
 

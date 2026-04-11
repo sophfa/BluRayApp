@@ -105,7 +105,7 @@ function render() {
     `,
   };
 
-  document.title = `${view.title} | BluRayApp`;
+  document.title = `${view.title} | MrCasaranoSir's BluRayApp`;
   app.innerHTML = view.html;
 
   navLinks.forEach((link) => {
