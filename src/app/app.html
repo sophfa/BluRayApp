@@ -76,14 +76,13 @@
         class="movie-row"
       >
         <div class="movie-num">{{ movie.id }}</div>
-        <div class="movie-title">
-          <span>{{ movie.title }}</span>
-          <i
-            *ngIf="movie.notes"
-            class="has-notes pi pi-file-edit"
-            [title]="movie.notes"
-            aria-label="Movie has notes"
-          ></i>
+        <div class="movie-main">
+          <div class="movie-title">
+            <span>{{ movie.title }}</span>
+          </div>
+          <p *ngIf="movie.notes" class="movie-note">
+            {{ movie.notes }}
+          </p>
         </div>
         <div class="movie-actions">
           <p-button

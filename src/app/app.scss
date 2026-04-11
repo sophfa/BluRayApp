@@ -231,7 +231,7 @@
 .movie-row {
   display: grid;
   grid-template-columns: 52px 1fr auto;
-  align-items: center;
+  align-items: start;
   padding: 10px 12px;
   border-radius: 8px;
   transition: background 0.15s;
@@ -246,10 +246,12 @@
   font-variant-numeric: tabular-nums;
 }
 
+.movie-main {
+  min-width: 0;
+}
+
 .movie-title {
   display: flex;
-  align-items: center;
-  gap: 8px;
   font-size: 0.92rem;
   color: #d0d0dc;
   overflow: hidden;
@@ -261,13 +263,21 @@
   }
 }
 
-.has-notes {
-  font-size: 0.75rem;
-  flex-shrink: 0;
+.movie-note {
+  margin-top: 4px;
+  color: #8f90a3;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
 }
 
 .movie-actions {
   display: flex;
+  align-items: flex-start;
   opacity: 0;
   transition: opacity 0.15s;
 
