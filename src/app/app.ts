@@ -32,7 +32,7 @@ export class App implements OnInit {
   public notesDraft = '';
 
   public constructor(private storage: CollectionStorageService) {}
-
+//
   public ngOnInit() {
     void this.initialize();
   }
