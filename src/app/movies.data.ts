@@ -2,6 +2,9 @@ export interface Movie {
   id: number;
   title: string;
   notes: string;
+  platinumed?: boolean;
+  platform?: string;
+  format?: 'disc' | 'digital' | '';
 }
 
 export const INITIAL_MOVIES: Omit<Movie, 'notes'>[] = [
