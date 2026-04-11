@@ -89,7 +89,7 @@ export class CollectionComponent implements OnInit {
       list = list.filter(m =>
         m.title.toLowerCase().includes(q) ||
         String(m.id).includes(q) ||
-        (m.tags ?? []).some(tag => tag.toLowerCase().includes(q))
+        (!this.isGameCollection && (m.tags ?? []).some(tag => tag.toLowerCase().includes(q)))
       );
     }
     return [...list].sort((a, b) => {
@@ -102,6 +102,9 @@ export class CollectionComponent implements OnInit {
   public get isGameCollection() { return this.itemLabel === 'game'; }
   public get primarySortField(): SortField { return 'id'; }
   public get primarySortLabel() { return this.isGameCollection ? 'Order' : '#'; }
+  public get searchPlaceholder() {
+    return this.isGameCollection ? 'Search by title or number...' : 'Search by title, number, or tag...';
+  }
 
   public switchCollection(path: string) {
     if (!path || path === this.activeCollectionPath) {

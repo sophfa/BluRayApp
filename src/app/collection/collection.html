@@ -49,7 +49,7 @@
       <input
         class="search-input"
         type="text"
-        placeholder="Search by title, number, or tag..."
+        [placeholder]="searchPlaceholder"
         [(ngModel)]="searchQuery"
       />
       <button *ngIf="searchQuery" class="clear-btn" (click)="searchQuery = ''" aria-label="Clear search">
