@@ -1,5 +1,7 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
+import { AuthService } from '@auth0/auth0-angular';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { catchError, filter, firstValueFrom, map, of, take, timeout } from 'rxjs';
 import { Movie } from './movies.data';
 
 interface RuntimeConfig {
@@ -8,27 +10,34 @@ interface RuntimeConfig {
   stateTable: string;
 }
 
+interface AuthIdentity {
+  token: string;
+  userId: string;
+}
+
 const DEFAULT_CONFIG: RuntimeConfig = {
   supabaseUrl: '',
   supabaseKey: '',
-  stateTable: 'app_state',
+  stateTable: 'user_app_state',
 };
 
 @Injectable({ providedIn: 'root' })
 export class CollectionStorageService {
+  private readonly auth = inject(AuthService);
   private client: SupabaseClient | null = null;
   private config: RuntimeConfig = DEFAULT_CONFIG;
   private initialized = false;
   private saveQueues: Record<string, Promise<void>> = {};
 
   public async loadMovies(collectionKey: string, initialMovies: Movie[]): Promise<Movie[]> {
-    const localMovies = this.readLocal(collectionKey);
-
     await this.initialize();
+    const authIdentity = await this.getAuthIdentity();
+    const localKey = this.getLocalKey(collectionKey, authIdentity?.userId);
+    const localMovies = this.readLocalWithLegacyFallback(collectionKey, localKey);
 
-    if (!this.client) {
+    if (!this.client || !authIdentity) {
       const fallback = localMovies ?? initialMovies;
-      this.writeLocal(collectionKey, fallback);
+      this.writeLocal(localKey, fallback);
       return fallback;
     }
 
@@ -36,7 +45,8 @@ export class CollectionStorageService {
       const { data, error } = await this.client
         .from(this.config.stateTable)
         .select('movies')
-        .eq('id', collectionKey)
+        .eq('owner_user_id', authIdentity.userId)
+        .eq('collection_key', collectionKey)
         .maybeSingle();
 
       if (error) throw error;
@@ -44,31 +54,42 @@ export class CollectionStorageService {
       const remoteMovies = data?.['movies'];
 
       if (this.isMovieArray(remoteMovies)) {
-        this.writeLocal(collectionKey, remoteMovies);
+        this.writeLocal(localKey, remoteMovies);
         return remoteMovies;
       }
 
       const seedMovies = localMovies ?? initialMovies;
-      await this.saveRemote(collectionKey, seedMovies);
+      await this.saveRemote(collectionKey, authIdentity.userId, seedMovies);
+      this.writeLocal(localKey, seedMovies);
       return seedMovies;
     } catch (error) {
       console.warn('Supabase unavailable. Using local cache instead.', error);
       const fallback = localMovies ?? initialMovies;
-      this.writeLocal(collectionKey, fallback);
+      this.writeLocal(localKey, fallback);
       return fallback;
     }
   }
 
   public saveMovies(collectionKey: string, movies: Movie[]) {
     const snapshot = movies.map(m => ({ ...m }));
-    this.writeLocal(collectionKey, snapshot);
 
     if (!this.saveQueues[collectionKey]) {
       this.saveQueues[collectionKey] = Promise.resolve();
     }
 
     this.saveQueues[collectionKey] = this.saveQueues[collectionKey]
-      .then(() => this.saveRemote(collectionKey, snapshot))
+      .then(async () => {
+        const authIdentity = await this.getAuthIdentity();
+        const localKey = this.getLocalKey(collectionKey, authIdentity?.userId);
+        this.writeLocal(localKey, snapshot);
+
+        if (!this.client || !authIdentity) {
+          console.warn('Saved locally only. Auth0 identity or Supabase client unavailable.');
+          return;
+        }
+
+        await this.saveRemote(collectionKey, authIdentity.userId, snapshot);
+      })
       .catch(error => { console.warn('Saved locally, but Supabase sync failed.', error); });
 
     return this.saveQueues[collectionKey];
@@ -85,6 +106,7 @@ export class CollectionStorageService {
     }
 
     this.client = createClient(this.config.supabaseUrl, this.config.supabaseKey, {
+      accessToken: async () => (await this.getAuthIdentity())?.token ?? null,
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
     });
   }
@@ -107,15 +129,72 @@ export class CollectionStorageService {
     }
   }
 
-  private async saveRemote(collectionKey: string, movies: Movie[]) {
+  private async saveRemote(collectionKey: string, ownerUserId: string, movies: Movie[]) {
     if (!this.client) return;
     const { error } = await this.client.from(this.config.stateTable).upsert(
-      { id: collectionKey, movies, updated_at: new Date().toISOString() },
-      { onConflict: 'id' }
+      {
+        owner_user_id: ownerUserId,
+        collection_key: collectionKey,
+        movies,
+        updated_at: new Date().toISOString()
+      },
+      { onConflict: 'owner_user_id,collection_key' }
     );
     if (error) {
       throw error;
     }
+  }
+
+  private async getAuthIdentity(): Promise<AuthIdentity | null> {
+    return firstValueFrom(
+      this.auth.idTokenClaims$.pipe(
+        map((claims) => this.parseAuthIdentity(claims)),
+        filter((identity): identity is AuthIdentity => identity !== null),
+        take(1),
+        timeout({ first: 5000 }),
+        catchError(() => of(null))
+      )
+    );
+  }
+
+  private parseAuthIdentity(claims: unknown): AuthIdentity | null {
+    if (!claims || typeof claims !== 'object') {
+      return null;
+    }
+
+    const raw = (claims as Record<string, unknown>)['__raw'];
+    const sub = (claims as Record<string, unknown>)['sub'];
+
+    if (typeof raw !== 'string' || typeof sub !== 'string') {
+      return null;
+    }
+
+    return { token: raw, userId: sub };
+  }
+
+  private getLocalKey(collectionKey: string, userId?: string) {
+    if (!userId) {
+      return collectionKey;
+    }
+
+    return `collection-cache:${encodeURIComponent(userId)}:${collectionKey}`;
+  }
+
+  private readLocalWithLegacyFallback(legacyKey: string, scopedKey: string): Movie[] | null {
+    const scoped = this.readLocal(scopedKey);
+    if (scoped) {
+      return scoped;
+    }
+
+    if (scopedKey === legacyKey) {
+      return null;
+    }
+
+    const legacy = this.readLocal(legacyKey);
+    if (legacy) {
+      this.writeLocal(scopedKey, legacy);
+    }
+    return legacy;
   }
 
   private readLocal(key: string): Movie[] | null {

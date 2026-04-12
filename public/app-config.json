@@ -1,6 +1,5 @@
 {
   "supabaseUrl": "https://tlqiythvelmedmwvszss.supabase.co",
   "supabaseKey": "sb_publishable_49V-yPqTcfc5HN1xnkjOnQ_a9HhNxoh",
-  "stateTable": "app_state",
-  "stateId": "default"
+  "stateTable": "user_app_state"
 }
