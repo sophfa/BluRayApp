@@ -43,10 +43,14 @@ jobs:
           base_path="${{ vars.PAGES_BASE_PATH }}"
 
           if [ -z "${base_path}" ]; then
-            base_path="/${{ github.event.repository.name }}"
-
-            if [ "${{ github.event.repository.name }}" = "${{ github.repository_owner }}.github.io" ]; then
+            if [ -f public/CNAME ]; then
               base_path=""
+            else
+              base_path="/${{ github.event.repository.name }}"
+
+              if [ "${{ github.event.repository.name }}" = "${{ github.repository_owner }}.github.io" ]; then
+                base_path=""
+              fi
             fi
           fi
 

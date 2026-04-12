@@ -115,6 +115,7 @@ Before the first successful deploy, open your GitHub repository settings and set
 - For a standard project site, no extra config is needed.
 - For a custom domain at the root, set the repository variable `PAGES_BASE_PATH` to `/`.
 - For a custom subpath, set `PAGES_BASE_PATH` to that path, for example `/collection`.
+- If you add [CNAME](/mnt/c/Repositories/BluRayApp/public/CNAME) under `public/`, the workflow treats the deploy as a root custom-domain build and uses `/` automatically.
 
 ## Notes
 
