@@ -154,12 +154,23 @@ async function sendSuggestionSubmittedEmail(
   await sendEmail({
     to: ADMIN_NOTIFICATION_EMAILS,
     subject: `New site suggestion: ${suggestion.title}`,
-    html: `
-      <p><strong>${escapeHtml(actor.username)}</strong> submitted a new site suggestion.</p>
-      <p><strong>${escapeHtml(suggestion.title)}</strong></p>
-      <p>${escapeHtml(suggestion.body)}</p>
-      <p><a href="${escapeAttribute(payload.actionUrl)}">Open notifications</a></p>
-    `,
+    html: buildEmailLayout({
+      eyebrow: 'Suggestion Inbox',
+      title: 'A new site improvement suggestion just arrived',
+      intro: `${actor.username} sent feedback for the site.`,
+      accent: '#d97706',
+      accentSoft: '#fff7ed',
+      badge: 'New suggestion',
+      buttonLabel: 'Open suggestions',
+      actionUrl: payload.actionUrl,
+      sections: [
+        renderDetailList([
+          ['From', actor.username],
+          ['Title', suggestion.title]
+        ]),
+        renderBodyCard('Suggestion details', suggestion.body)
+      ]
+    }),
     text: `${actor.username} submitted a new site suggestion.\n\n${suggestion.title}\n\n${suggestion.body}\n\nOpen notifications: ${payload.actionUrl}`
   });
 }
@@ -187,11 +198,22 @@ async function sendSuggestionStatusChangedEmail(
   await sendEmail({
     to: [recipient.email],
     subject: `Suggestion update: ${suggestion.title}`,
-    html: `
-      <p>Your suggestion <strong>${escapeHtml(suggestion.title)}</strong> is now <strong>${escapeHtml(suggestion.status)}</strong>.</p>
-      <p>Reviewed by ${escapeHtml(actor.username)}.</p>
-      <p><a href="${escapeAttribute(payload.actionUrl)}">Open notifications</a></p>
-    `,
+    html: buildEmailLayout({
+      eyebrow: 'Suggestion Update',
+      title: `Your suggestion is now ${suggestion.status}`,
+      intro: `${actor.username} reviewed your feedback.`,
+      accent: suggestionStatusAccent(suggestion.status),
+      accentSoft: '#f8fafc',
+      badge: `Status: ${suggestion.status}`,
+      buttonLabel: 'View update',
+      actionUrl: payload.actionUrl,
+      sections: [
+        renderDetailList([
+          ['Title', suggestion.title],
+          ['Updated by', actor.username]
+        ])
+      ]
+    }),
     text: `Your suggestion "${suggestion.title}" is now ${suggestion.status}.\nReviewed by ${actor.username}.\n\nOpen notifications: ${payload.actionUrl}`
   });
 }
@@ -213,10 +235,22 @@ async function sendFriendRequestEmail(
   await sendEmail({
     to: [friendship.recipient.email],
     subject: `${friendship.requester.username} sent you a friend request`,
-    html: `
-      <p><strong>${escapeHtml(friendship.requester.username)}</strong> sent you a friend request.</p>
-      <p><a href="${escapeAttribute(payload.actionUrl)}">Open friend requests</a></p>
-    `,
+    html: buildEmailLayout({
+      eyebrow: 'Friend Request',
+      title: `${friendship.requester.username} wants to connect`,
+      intro: 'You have a new friend request waiting in My Collection.',
+      accent: '#7c3aed',
+      accentSoft: '#f5f3ff',
+      badge: 'Pending request',
+      buttonLabel: 'Review request',
+      actionUrl: payload.actionUrl,
+      sections: [
+        renderDetailList([
+          ['From', friendship.requester.username],
+          ['To', friendship.recipient.username]
+        ])
+      ]
+    }),
     text: `${friendship.requester.username} sent you a friend request.\n\nOpen friend requests: ${payload.actionUrl}`
   });
 }
@@ -238,10 +272,22 @@ async function sendFriendAcceptedEmail(
   await sendEmail({
     to: [friendship.requester.email],
     subject: `${friendship.recipient.username} accepted your friend request`,
-    html: `
-      <p><strong>${escapeHtml(friendship.recipient.username)}</strong> accepted your friend request.</p>
-      <p><a href="${escapeAttribute(payload.actionUrl)}">Open friends</a></p>
-    `,
+    html: buildEmailLayout({
+      eyebrow: 'Friend Request Accepted',
+      title: `${friendship.recipient.username} accepted your request`,
+      intro: 'You can now view collections and chat with each other.',
+      accent: '#059669',
+      accentSoft: '#ecfdf5',
+      badge: 'Now friends',
+      buttonLabel: 'Open friends',
+      actionUrl: payload.actionUrl,
+      sections: [
+        renderDetailList([
+          ['Friend', friendship.recipient.username],
+          ['Status', 'Accepted']
+        ])
+      ]
+    }),
     text: `${friendship.recipient.username} accepted your friend request.\n\nOpen friends: ${payload.actionUrl}`
   });
 }
@@ -279,11 +325,22 @@ async function sendChatMessageEmail(
   await sendEmail({
     to: [target.email],
     subject: `New message from ${actor.username}`,
-    html: `
-      <p><strong>${escapeHtml(actor.username)}</strong> sent you a new message.</p>
-      <blockquote>${escapeHtml(payload.bodyPreview)}</blockquote>
-      <p><a href="${escapeAttribute(payload.actionUrl)}">Open chat</a></p>
-    `,
+    html: buildEmailLayout({
+      eyebrow: 'New Message',
+      title: `${actor.username} sent you a chat message`,
+      intro: 'Open the conversation to reply from inside the app.',
+      accent: '#2563eb',
+      accentSoft: '#eff6ff',
+      badge: 'Unread message',
+      buttonLabel: 'Open chat',
+      actionUrl: payload.actionUrl,
+      sections: [
+        renderDetailList([
+          ['From', actor.username]
+        ]),
+        renderMessagePreview(payload.bodyPreview)
+      ]
+    }),
     text: `${actor.username} sent you a new message.\n\n${payload.bodyPreview}\n\nOpen chat: ${payload.actionUrl}`
   });
 }
@@ -406,6 +463,140 @@ function ensureConfig() {
 
   if (!RESEND_API_KEY || !RESEND_FROM_EMAIL) {
     throw new Error('Resend environment variables are missing.');
+  }
+}
+
+function buildEmailLayout(input: {
+  eyebrow: string;
+  title: string;
+  intro: string;
+  accent: string;
+  accentSoft: string;
+  badge: string;
+  buttonLabel: string;
+  actionUrl: string;
+  sections: string[];
+}): string {
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${escapeHtml(input.title)}</title>
+  </head>
+  <body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;color:#111827;">
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;">
+      ${escapeHtml(input.title)} - ${escapeHtml(input.eyebrow)}
+    </div>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f3f4f6;padding:24px 12px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;background:#ffffff;border-radius:24px;overflow:hidden;box-shadow:0 18px 45px rgba(15,23,42,0.12);">
+            <tr>
+              <td style="padding:0;">
+                <div style="padding:32px;background:linear-gradient(135deg, ${input.accentSoft} 0%, #ffffff 65%);border-bottom:1px solid #e5e7eb;">
+                  <div style="display:inline-block;padding:6px 10px;border-radius:999px;background:${input.accent};color:#ffffff;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">
+                    ${escapeHtml(input.badge)}
+                  </div>
+                  <div style="margin-top:18px;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:${input.accent};">
+                    ${escapeHtml(input.eyebrow)}
+                  </div>
+                  <h1 style="margin:12px 0 12px;font-size:30px;line-height:1.15;color:#111827;">
+                    ${escapeHtml(input.title)}
+                  </h1>
+                  <p style="margin:0;font-size:16px;line-height:1.6;color:#4b5563;">
+                    ${escapeHtml(input.intro)}
+                  </p>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:28px 32px 12px;">
+                ${input.sections.join('')}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:8px 32px 32px;">
+                <a href="${escapeAttribute(input.actionUrl)}" style="display:inline-block;padding:14px 22px;border-radius:14px;background:${input.accent};color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;">
+                  ${escapeHtml(input.buttonLabel)}
+                </a>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:0 32px 32px;">
+                <p style="margin:0;font-size:13px;line-height:1.6;color:#6b7280;">
+                  If the button does not work, open this link:
+                  <br />
+                  <a href="${escapeAttribute(input.actionUrl)}" style="color:${input.accent};word-break:break-word;">${escapeHtml(input.actionUrl)}</a>
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+}
+
+function renderDetailList(rows: Array<[string, string]>): string {
+  const items = rows.map(([label, value]) => `
+    <tr>
+      <td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:13px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.04em;">
+        ${escapeHtml(label)}
+      </td>
+      <td style="padding:10px 0 10px 16px;border-bottom:1px solid #e5e7eb;font-size:15px;color:#111827;">
+        ${escapeHtml(value)}
+      </td>
+    </tr>
+  `).join('');
+
+  return `
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 20px;">
+      ${items}
+    </table>
+  `;
+}
+
+function renderBodyCard(title: string, body: string): string {
+  return `
+    <div style="margin:0 0 20px;padding:20px;border:1px solid #e5e7eb;border-radius:18px;background:#f9fafb;">
+      <div style="margin:0 0 10px;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#6b7280;">
+        ${escapeHtml(title)}
+      </div>
+      <div style="font-size:15px;line-height:1.7;color:#111827;white-space:pre-wrap;">
+        ${escapeHtml(body)}
+      </div>
+    </div>
+  `;
+}
+
+function renderMessagePreview(body: string): string {
+  return `
+    <div style="margin:0 0 20px;padding:18px 20px;border-radius:18px;background:#eef2ff;border:1px solid #c7d2fe;">
+      <div style="margin:0 0 8px;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#4338ca;">
+        Message preview
+      </div>
+      <div style="font-size:15px;line-height:1.7;color:#1f2937;white-space:pre-wrap;">
+        ${escapeHtml(body)}
+      </div>
+    </div>
+  `;
+}
+
+function suggestionStatusAccent(status: string): string {
+  switch (status) {
+    case 'done':
+      return '#059669';
+    case 'planned':
+      return '#2563eb';
+    case 'reviewing':
+      return '#7c3aed';
+    case 'dismissed':
+      return '#6b7280';
+    case 'new':
+    default:
+      return '#d97706';
   }
 }
 
