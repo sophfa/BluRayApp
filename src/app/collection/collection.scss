@@ -71,6 +71,26 @@
   font: inherit;
 }
 
+.friends-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.55rem 1rem;
+  border: 1px solid #2a2a38;
+  border-radius: 999px;
+  background: #14141d;
+  color: #8f90a3;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.16s, color 0.16s;
+  flex-shrink: 0;
+
+  &:hover { background: #1d2231; color: #eef2ff; }
+}
+
 // ── Header ──────────────────────────────────────────────
 .header {
   display: flex;

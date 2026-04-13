@@ -1,0 +1,138 @@
+<div class="friends-page">
+
+  <!-- Header -->
+  <header class="friends-header">
+    <button class="back-btn" (click)="router.navigate(['/bluray'])" aria-label="Back">
+      <i class="pi pi-arrow-left"></i>
+    </button>
+    <div class="header-text">
+      <h1>Friends</h1>
+      <p class="header-sub" *ngIf="currentProfile">@{{ currentProfile.username }}</p>
+    </div>
+  </header>
+
+  <div class="loading" *ngIf="loading">Loading...</div>
+
+  <ng-container *ngIf="!loading">
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab" [class.active]="tab === 'friends'" (click)="tab = 'friends'">
+        <i class="pi pi-users"></i> Friends
+        <span class="badge" *ngIf="friends.length">{{ friends.length }}</span>
+      </button>
+      <button class="tab" [class.active]="tab === 'requests'" (click)="tab = 'requests'">
+        <i class="pi pi-bell"></i> Requests
+        <span class="badge badge-alert" *ngIf="pendingCount">{{ pendingCount }}</span>
+      </button>
+      <button class="tab" [class.active]="tab === 'find'" (click)="tab = 'find'">
+        <i class="pi pi-search"></i> Find
+      </button>
+    </div>
+
+    <!-- Friends list -->
+    <div *ngIf="tab === 'friends'">
+      <div class="empty" *ngIf="friends.length === 0">
+        No friends yet. Use the Find tab to add people!
+      </div>
+      <div class="friend-row" *ngFor="let entry of friends">
+        <div class="friend-avatar" [class.has-img]="entry.friend.avatar_url">
+          <img *ngIf="entry.friend.avatar_url" [src]="entry.friend.avatar_url" [alt]="entry.friend.username" />
+          <span *ngIf="!entry.friend.avatar_url">{{ initials(entry.friend.username) }}</span>
+        </div>
+        <div class="friend-info">
+          <span class="friend-name">{{ entry.friend.username }}</span>
+        </div>
+        <div class="friend-actions">
+          <button class="action-btn" (click)="viewCollection(entry.friend.username)">
+            <i class="pi pi-eye"></i> View
+          </button>
+          <button class="action-btn action-btn--danger"
+            [disabled]="actionInProgress[entry.friendship.id]"
+            (click)="removeFriend(entry)">
+            <i class="pi pi-user-minus"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Requests tab -->
+    <div *ngIf="tab === 'requests'">
+      <h3 class="section-label">Received</h3>
+      <div class="empty" *ngIf="pendingReceived.length === 0">No incoming requests.</div>
+      <div class="friend-row" *ngFor="let req of pendingReceived">
+        <div class="friend-avatar">
+          <img *ngIf="req.requester?.avatar_url" [src]="req.requester!.avatar_url!" [alt]="req.requester!.username" />
+          <span *ngIf="!req.requester?.avatar_url">{{ initials(req.requester?.username ?? '?') }}</span>
+        </div>
+        <div class="friend-info">
+          <span class="friend-name">{{ req.requester?.username }}</span>
+          <span class="friend-sub">wants to be friends</span>
+        </div>
+        <div class="friend-actions">
+          <button class="action-btn action-btn--accept"
+            [disabled]="actionInProgress[req.id]"
+            (click)="accept(req)">Accept</button>
+          <button class="action-btn action-btn--danger"
+            [disabled]="actionInProgress[req.id]"
+            (click)="decline(req)">Decline</button>
+        </div>
+      </div>
+
+      <h3 class="section-label" style="margin-top:24px">Sent</h3>
+      <div class="empty" *ngIf="pendingSent.length === 0">No pending sent requests.</div>
+      <div class="friend-row" *ngFor="let req of pendingSent">
+        <div class="friend-avatar">
+          <img *ngIf="req.recipient?.avatar_url" [src]="req.recipient!.avatar_url!" [alt]="req.recipient!.username" />
+          <span *ngIf="!req.recipient?.avatar_url">{{ initials(req.recipient?.username ?? '?') }}</span>
+        </div>
+        <div class="friend-info">
+          <span class="friend-name">{{ req.recipient?.username }}</span>
+          <span class="friend-sub">request pending</span>
+        </div>
+        <div class="friend-actions">
+          <button class="action-btn action-btn--danger"
+            [disabled]="actionInProgress[req.id]"
+            (click)="decline(req)">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Find tab -->
+    <div *ngIf="tab === 'find'">
+      <div class="search-wrap">
+        <input
+          class="search-input"
+          type="text"
+          placeholder="Search by username..."
+          [(ngModel)]="searchQuery"
+          (keyup.enter)="search()"
+        />
+        <button class="search-go" (click)="search()" [disabled]="!searchQuery.trim() || searching">
+          {{ searching ? '...' : 'Search' }}
+        </button>
+      </div>
+
+      <div class="empty" *ngIf="searchDone && searchResults.length === 0">No users found.</div>
+
+      <div class="friend-row" *ngFor="let profile of searchResults">
+        <div class="friend-avatar" [class.has-img]="profile.avatar_url">
+          <img *ngIf="profile.avatar_url" [src]="profile.avatar_url" [alt]="profile.username" />
+          <span *ngIf="!profile.avatar_url">{{ initials(profile.username) }}</span>
+        </div>
+        <div class="friend-info">
+          <span class="friend-name">{{ profile.username }}</span>
+          <span class="friend-sub relation-label" *ngIf="relationshipLabel(profile)">
+            {{ relationshipLabel(profile) }}
+          </span>
+        </div>
+        <div class="friend-actions" *ngIf="canAddFriend(profile)">
+          <button class="action-btn action-btn--accept"
+            [disabled]="actionInProgress[profile.id]"
+            (click)="sendRequest(profile)">
+            <i class="pi pi-user-plus"></i> Add
+          </button>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+</div>

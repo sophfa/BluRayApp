@@ -1,0 +1,227 @@
+.friends-page {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 0 16px 60px;
+}
+
+// ── Header ────────────────────────────────────
+.friends-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 24px 0 20px;
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: #18181f;
+  border: 1px solid #2a2a38;
+  border-radius: 50%;
+  color: #888;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+  &:hover { background: #25253a; color: #e2e2e8; }
+}
+
+.header-text h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.header-sub {
+  font-size: 0.82rem;
+  color: #555;
+  margin-top: 2px;
+}
+
+// ── Tabs ──────────────────────────────────────
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #1e1e28;
+  padding-bottom: 0;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #666;
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 600;
+  font-family: inherit;
+  transition: color 0.15s, border-color 0.15s;
+  margin-bottom: -1px;
+
+  &:hover { color: #aaa; }
+  &.active { color: #818cf8; border-bottom-color: #4f46e5; }
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  background: #25253a;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  color: #aaa;
+
+  &-alert { background: #4f46e5; color: #fff; }
+}
+
+// ── Friend row ────────────────────────────────
+.friend-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #17171f;
+}
+
+.friend-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #25253a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #818cf8;
+  flex-shrink: 0;
+  overflow: hidden;
+  border: 1px solid #2a2a38;
+
+  img { width: 100%; height: 100%; object-fit: cover; }
+}
+
+.friend-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.friend-name {
+  font-size: 0.9rem;
+  color: #d0d0dc;
+  font-weight: 600;
+}
+
+.friend-sub {
+  font-size: 0.78rem;
+  color: #555;
+  margin-top: 1px;
+
+  &.relation-label { color: #4f46e5; }
+}
+
+.friend-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid #2a2a38;
+  background: #1a1a24;
+  color: #888;
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover:not(:disabled) { background: #25253a; color: #ccc; }
+  &:disabled { opacity: 0.4; cursor: default; }
+
+  &--accept {
+    background: #1e1b4b;
+    border-color: #4f46e5;
+    color: #818cf8;
+    &:hover:not(:disabled) { background: #2e2a6e; }
+  }
+
+  &--danger {
+    &:hover:not(:disabled) { background: #2d1a1a; border-color: #ef4444; color: #f87171; }
+  }
+}
+
+// ── Search ────────────────────────────────────
+.search-wrap {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.search-input {
+  flex: 1;
+  padding: 9px 14px;
+  background: #1a1a24;
+  border: 1px solid #2a2a38;
+  border-radius: 8px;
+  color: #e2e2e8;
+  font-size: 0.9rem;
+  font-family: inherit;
+  outline: none;
+  &:focus { border-color: #4f46e5; }
+  &::placeholder { color: #444; }
+}
+
+.search-go {
+  padding: 9px 18px;
+  background: #4f46e5;
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+  &:hover:not(:disabled) { background: #4338ca; }
+  &:disabled { opacity: 0.4; cursor: default; }
+}
+
+// ── Misc ──────────────────────────────────────
+.section-label {
+  font-size: 0.72rem;
+  color: #444;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 4px 0 8px;
+}
+
+.empty {
+  color: #444;
+  font-size: 0.9rem;
+  padding: 24px 0;
+  text-align: center;
+}
+
+.loading {
+  color: #555;
+  padding: 48px 0;
+  text-align: center;
+}

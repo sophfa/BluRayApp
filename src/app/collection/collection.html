@@ -29,6 +29,15 @@
         </option>
       </select>
     </label>
+
+    <button *ngIf="!isReadOnly" class="friends-nav-btn" (click)="goToFriends()">
+      <i class="pi pi-users"></i>
+      <span>Friends</span>
+    </button>
+    <button *ngIf="isReadOnly" class="friends-nav-btn" (click)="goToFriends()">
+      <i class="pi pi-arrow-left"></i>
+      <span>Back</span>
+    </button>
   </section>
 
   <!-- Header -->
@@ -36,8 +45,8 @@
     <div class="header-left">
       <i class="header-icon pi {{ collectionIcon }}" aria-hidden="true"></i>
       <div>
-        <h1>{{ collectionTitle }}</h1>
-        <p class="header-sub">{{ totalCount }} {{ itemLabel }}s</p>
+        <h1>{{ isReadOnly ? friendDisplayName + "'s " + collectionTitle : collectionTitle }}</h1>
+        <p class="header-sub">{{ totalCount }} {{ itemLabel }}s<span *ngIf="isReadOnly"> · read only</span></p>
       </div>
     </div>
   </header>
@@ -56,7 +65,7 @@
         <i class="pi pi-times" aria-hidden="true"></i>
       </button>
     </div>
-    <div class="action-btns">
+    <div class="action-btns" *ngIf="!isReadOnly">
       <p-button
         [label]="'Add ' + itemLabel"
         icon="pi pi-plus"
@@ -116,7 +125,7 @@
             </div>
             <p *ngIf="movie.notes" class="movie-note">{{ movie.notes }}</p>
           </div>
-          <div class="movie-actions">
+          <div class="movie-actions" *ngIf="!isReadOnly">
             <p-button
               icon="pi pi-ellipsis-v"
               styleClass="movie-menu-button"

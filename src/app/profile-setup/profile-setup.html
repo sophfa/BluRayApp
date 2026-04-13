@@ -1,0 +1,43 @@
+<div class="setup-page">
+  <div class="setup-card">
+    <div class="setup-icon">👤</div>
+    <h1>Set up your profile</h1>
+    <p class="setup-sub">Choose a username so friends can find you.</p>
+
+    <!-- Avatar -->
+    <div class="avatar-wrap">
+      <label class="avatar-label" for="avatar-input">
+        <div class="avatar" [class.has-image]="avatarPreview">
+          <img *ngIf="avatarPreview" [src]="avatarPreview" alt="Avatar preview" />
+          <span *ngIf="!avatarPreview" class="avatar-placeholder pi pi-camera"></span>
+        </div>
+        <span class="avatar-hint">Upload photo</span>
+      </label>
+      <input id="avatar-input" type="file" accept="image/*" (change)="onFileChange($event)" hidden />
+    </div>
+
+    <!-- Username -->
+    <div class="form-group">
+      <label for="username">Username</label>
+      <input
+        id="username"
+        type="text"
+        [(ngModel)]="username"
+        placeholder="e.g. mrcasaranosir"
+        maxlength="30"
+        (keyup.enter)="save()"
+      />
+      <span class="field-hint">Letters, numbers and underscores only.</span>
+    </div>
+
+    <p class="error-msg" *ngIf="error">{{ error }}</p>
+
+    <button
+      class="btn-save"
+      (click)="save()"
+      [disabled]="!username.trim() || saving"
+    >
+      {{ saving ? 'Saving...' : 'Continue' }}
+    </button>
+  </div>
+</div>

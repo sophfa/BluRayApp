@@ -70,6 +70,19 @@ export class CollectionStorageService {
     }
   }
 
+  /** Load another user's collection (read-only, for friend view). */
+  public async loadMoviesForUser(ownerUserId: string, collectionKey: string): Promise<Movie[]> {
+    await this.initialize();
+    if (!this.client) return [];
+    const { data } = await this.client
+      .from(this.config.stateTable)
+      .select('movies')
+      .eq('owner_user_id', ownerUserId)
+      .eq('collection_key', collectionKey)
+      .maybeSingle();
+    return this.isMovieArray(data?.['movies']) ? data!['movies'] : [];
+  }
+
   public saveMovies(collectionKey: string, movies: Movie[]) {
     const snapshot = movies.map(m => ({ ...m }));
 

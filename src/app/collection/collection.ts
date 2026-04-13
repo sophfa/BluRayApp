@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
@@ -8,6 +8,7 @@ import { ConfirmPopupModule } from 'primeng/confirmpopup';
 import { MenuModule } from 'primeng/menu';
 import { Movie, INITIAL_MOVIES } from '../movies.data';
 import { CollectionStorageService } from '../collection-storage.service';
+import { ProfileService } from '../profile.service';
 
 type SortField = 'id' | 'title';
 type SortDir = 'asc' | 'desc';
@@ -50,16 +51,23 @@ export class CollectionComponent implements OnInit {
   public editingMovieId: number | null = null;
   public movieMenuItems: MenuItem[] = [];
 
-  public constructor(
-    private router: Router,
-    private route: ActivatedRoute,
-    private storage: CollectionStorageService,
-    private confirmationService: ConfirmationService
-  ) {}
+  // friend view
+  public isReadOnly = false;
+  public friendUsername = '';
+  public friendDisplayName = '';
+
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly storage = inject(CollectionStorageService);
+  private readonly profileService = inject(ProfileService);
+  private readonly confirmationService = inject(ConfirmationService);
 
   public ngOnInit() {
     const data = this.route.snapshot.data;
-    this.activeCollectionPath = this.route.snapshot.routeConfig?.path ?? 'bluray';
+    const params = this.route.snapshot.params;
+    this.isReadOnly = !!data['readOnly'];
+    this.friendUsername = params['username'] ?? '';
+    this.activeCollectionPath = this.route.snapshot.routeConfig?.path?.split('/').pop() ?? 'bluray';
     this.collectionKey = data['collectionKey'];
     this.collectionTitle = data['collectionTitle'];
     this.collectionIcon = data['collectionIcon'];
@@ -68,6 +76,16 @@ export class CollectionComponent implements OnInit {
   }
 
   private async initialize() {
+    if (this.isReadOnly && this.friendUsername) {
+      const profile = await this.profileService.getByUsername(this.friendUsername);
+      if (profile) {
+        this.friendDisplayName = profile.username;
+        const loaded = await this.storage.loadMoviesForUser(profile.auth0_id, this.collectionKey);
+        this.movies.set(loaded);
+      }
+      this.isLoaded = true;
+      return;
+    }
     const initial = INITIAL_DATA[this.collectionKey] ?? [];
     const loaded = await this.storage.loadMovies(this.collectionKey, initial);
     const normalized = this.isGameCollection ? this.normalizeGameIds(loaded) : loaded;
@@ -106,12 +124,17 @@ export class CollectionComponent implements OnInit {
     return this.isGameCollection ? 'Search by title or number...' : 'Search by title, number, or tag...';
   }
 
-  public switchCollection(path: string) {
-    if (!path || path === this.activeCollectionPath) {
-      return;
-    }
+  public goToFriends() {
+    void this.router.navigate(['/friends']);
+  }
 
-    void this.router.navigate(['/', path]);
+  public switchCollection(path: string) {
+    if (!path || path === this.activeCollectionPath) return;
+    if (this.isReadOnly && this.friendUsername) {
+      void this.router.navigate(['/friends', this.friendUsername, path]);
+    } else {
+      void this.router.navigate(['/', path]);
+    }
   }
 
   public setSort(field: SortField) {
