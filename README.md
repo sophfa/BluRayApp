@@ -70,7 +70,195 @@ using ((auth.jwt() ->> 'sub') = owner_user_id)
 with check ((auth.jwt() ->> 'sub') = owner_user_id);
 ```
 
-### 4. Configure the frontend runtime file
+### 4. Create the profile and friends tables
+
+If you are using the profile setup and friends features, you also need these database tables:
+
+```sql
+create table if not exists public.profiles (
+  id uuid primary key default gen_random_uuid(),
+  auth0_id text not null unique,
+  username text not null unique,
+  avatar_url text,
+  created_at timestamptz not null default timezone('utc', now())
+);
+
+alter table public.profiles enable row level security;
+
+create policy "authenticated users can read profiles"
+on public.profiles
+for select
+to authenticated
+using (true);
+
+create policy "users insert own profile"
+on public.profiles
+for insert
+to authenticated
+with check ((auth.jwt() ->> 'sub') = auth0_id);
+
+create policy "users update own profile"
+on public.profiles
+for update
+to authenticated
+using ((auth.jwt() ->> 'sub') = auth0_id)
+with check ((auth.jwt() ->> 'sub') = auth0_id);
+
+create table if not exists public.friendships (
+  id uuid primary key default gen_random_uuid(),
+  requester_id uuid not null references public.profiles(id) on delete cascade,
+  recipient_id uuid not null references public.profiles(id) on delete cascade,
+  status text not null default 'pending' check (status in ('pending', 'accepted')),
+  created_at timestamptz not null default timezone('utc', now()),
+  constraint friendships_unique_pair unique (requester_id, recipient_id),
+  constraint friendships_no_self check (requester_id <> recipient_id)
+);
+
+alter table public.friendships enable row level security;
+
+create policy "users read own friendships"
+on public.friendships
+for select
+to authenticated
+using (
+  exists (
+    select 1
+    from public.profiles profile
+    where profile.id = requester_id
+      and profile.auth0_id = (auth.jwt() ->> 'sub')
+  )
+  or exists (
+    select 1
+    from public.profiles profile
+    where profile.id = recipient_id
+      and profile.auth0_id = (auth.jwt() ->> 'sub')
+  )
+);
+
+create policy "users create friendship requests"
+on public.friendships
+for insert
+to authenticated
+with check (
+  exists (
+    select 1
+    from public.profiles profile
+    where profile.id = requester_id
+      and profile.auth0_id = (auth.jwt() ->> 'sub')
+  )
+);
+
+create policy "users update own friendships"
+on public.friendships
+for update
+to authenticated
+using (
+  exists (
+    select 1
+    from public.profiles profile
+    where profile.id = requester_id
+      and profile.auth0_id = (auth.jwt() ->> 'sub')
+  )
+  or exists (
+    select 1
+    from public.profiles profile
+    where profile.id = recipient_id
+      and profile.auth0_id = (auth.jwt() ->> 'sub')
+  )
+)
+with check (
+  exists (
+    select 1
+    from public.profiles profile
+    where profile.id = requester_id
+      and profile.auth0_id = (auth.jwt() ->> 'sub')
+  )
+  or exists (
+    select 1
+    from public.profiles profile
+    where profile.id = recipient_id
+      and profile.auth0_id = (auth.jwt() ->> 'sub')
+  )
+);
+
+create policy "users delete own friendships"
+on public.friendships
+for delete
+to authenticated
+using (
+  exists (
+    select 1
+    from public.profiles profile
+    where profile.id = requester_id
+      and profile.auth0_id = (auth.jwt() ->> 'sub')
+  )
+  or exists (
+    select 1
+    from public.profiles profile
+    where profile.id = recipient_id
+      and profile.auth0_id = (auth.jwt() ->> 'sub')
+  )
+);
+```
+
+### 5. Create the avatars storage bucket
+
+The profile setup screen uploads avatars to a bucket called `avatars`. Create it in Supabase and add storage policies:
+
+```sql
+insert into storage.buckets (id, name, public)
+values ('avatars', 'avatars', true)
+on conflict (id) do update
+set public = excluded.public;
+
+drop policy if exists "authenticated users can read avatars" on storage.objects;
+drop policy if exists "users upload own avatar" on storage.objects;
+drop policy if exists "users update own avatar" on storage.objects;
+drop policy if exists "users delete own avatar" on storage.objects;
+
+create policy "authenticated users can read avatars"
+on storage.objects
+for select
+to authenticated
+using (bucket_id = 'avatars');
+
+create policy "users upload own avatar"
+on storage.objects
+for insert
+to authenticated
+with check (
+  bucket_id = 'avatars'
+  and (storage.foldername(name))[1] = translate(trim(trailing '=' from encode(convert_to(auth.jwt() ->> 'sub', 'utf8'), 'base64')), '+/', '-_')
+);
+
+create policy "users update own avatar"
+on storage.objects
+for update
+to authenticated
+using (
+  bucket_id = 'avatars'
+  and (storage.foldername(name))[1] = translate(trim(trailing '=' from encode(convert_to(auth.jwt() ->> 'sub', 'utf8'), 'base64')), '+/', '-_')
+)
+with check (
+  bucket_id = 'avatars'
+  and (storage.foldername(name))[1] = translate(trim(trailing '=' from encode(convert_to(auth.jwt() ->> 'sub', 'utf8'), 'base64')), '+/', '-_')
+);
+
+create policy "users delete own avatar"
+on storage.objects
+for delete
+to authenticated
+using (
+  bucket_id = 'avatars'
+  and (storage.foldername(name))[1] = translate(trim(trailing '=' from encode(convert_to(auth.jwt() ->> 'sub', 'utf8'), 'base64')), '+/', '-_')
+);
+```
+
+If you already created the older avatar policies, rerun this whole block so the folder rule matches the app's encoded Auth0 id path.
+
+If profile setup stays on `Saving...`, the most common causes are that `public.profiles` does not exist yet or the `avatars` bucket/policies have not been created.
+
+### 6. Configure the frontend runtime file
 
 Update [public/app-config.json](/mnt/c/Repositories/BluRayApp/public/app-config.json):
 
@@ -84,7 +272,7 @@ Update [public/app-config.json](/mnt/c/Repositories/BluRayApp/public/app-config.
 
 `public/app-config.json` is intentionally public. Supabase publishable keys are designed for browser apps.
 
-### 5. Auth0 application URLs
+### 7. Auth0 application URLs
 
 In Auth0, make sure these are configured on the SPA app:
 

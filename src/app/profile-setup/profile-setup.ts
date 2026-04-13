@@ -7,6 +7,8 @@ import { firstValueFrom, filter } from 'rxjs';
 import { ProfileService } from '../profile.service';
 import { SupabaseService } from '../supabase.service';
 
+const SAVE_TIMEOUT_MS = 15000;
+
 @Component({
   selector: 'app-profile-setup',
   standalone: true,
@@ -21,6 +23,7 @@ export class ProfileSetupComponent implements OnInit {
   public saving = false;
   public error = '';
   public auth0DisplayName = '';
+  private auth0Id: string | null = null;
 
   constructor(
     private auth0: AuthService,
@@ -32,6 +35,8 @@ export class ProfileSetupComponent implements OnInit {
   public async ngOnInit() {
     const user = await firstValueFrom(this.auth0.user$.pipe(filter(u => u !== undefined)));
     if (!user?.sub) { this.router.navigate(['/']); return; }
+
+    this.auth0Id = user.sub;
 
     // Pre-fill username from Auth0 nickname/name if available
     this.auth0DisplayName = user.name ?? user.nickname ?? '';
@@ -53,22 +58,83 @@ export class ProfileSetupComponent implements OnInit {
     if (!this.username.trim()) return;
     this.saving = true;
     this.error = '';
+
     try {
-      const auth0Id = await this.supabase.getCurrentUserId();
+      const auth0Id = this.auth0Id ?? await this.supabase.getCurrentUserId();
       if (!auth0Id) throw new Error('Not authenticated');
 
       let avatarUrl: string | null = null;
       if (this.avatarFile) {
-        avatarUrl = await this.profileService.uploadAvatar(auth0Id, this.avatarFile);
+        avatarUrl = await this.withTimeout(
+          this.profileService.uploadAvatar(auth0Id, this.avatarFile),
+          'Avatar upload'
+        );
       }
-      await this.profileService.create(auth0Id, this.username.trim(), avatarUrl);
+
+      await this.withTimeout(
+        this.profileService.create(auth0Id, this.username.trim(), avatarUrl),
+        'Profile save'
+      );
+
       this.router.navigate(['/bluray']);
     } catch (e: unknown) {
-      this.error = e instanceof Error && e.message.includes('unique')
-        ? 'That username is already taken.'
-        : 'Something went wrong. Please try again.';
+      console.error('Profile setup save failed', e);
+      this.error = this.describeSaveError(e);
     } finally {
       this.saving = false;
     }
+  }
+
+  private async withTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    try {
+      return await Promise.race([
+        promise,
+        new Promise<T>((_, reject) => {
+          timeoutId = setTimeout(() => {
+            reject(new Error(`${label} timed out. Please check your Supabase setup and try again.`));
+          }, SAVE_TIMEOUT_MS);
+        })
+      ]);
+    } finally {
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+      }
+    }
+  }
+
+  private describeSaveError(error: unknown): string {
+    if (!(error instanceof Error)) {
+      return 'Something went wrong. Please try again.';
+    }
+
+    const message = error.message.toLowerCase();
+
+    if (message.includes('unique')) {
+      return 'That username is already taken.';
+    }
+
+    if (message.includes('not authenticated')) {
+      return 'You need to sign in again before saving your profile.';
+    }
+
+    if (message.includes("public.profiles") || message.includes('profiles table')) {
+      return 'Supabase profiles table is missing. Run the profile setup SQL in the README.';
+    }
+
+    if (message.includes('bucket') || message.includes('avatars')) {
+      return 'Supabase avatar storage is not set up yet. Create the avatars bucket and its policies first.';
+    }
+
+    if (message.includes('storage path')) {
+      return 'Avatar upload failed because the storage path was rejected. Refresh after deploying the latest build and try again.';
+    }
+
+    if (message.includes('timed out')) {
+      return error.message;
+    }
+
+    return 'Something went wrong. Please try again.';
   }
 }
