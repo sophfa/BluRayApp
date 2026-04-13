@@ -7,6 +7,7 @@ import { firstValueFrom, filter } from 'rxjs';
 import { ProfileService, Profile } from '../profile.service';
 import { FriendsService, FriendEntry, Friendship } from '../friends.service';
 import { ChatMessage, MessagesService } from '../messages.service';
+import { EmailNotificationsService } from '../email-notifications.service';
 
 type Tab = 'friends' | 'requests' | 'find' | 'chat';
 
@@ -49,6 +50,7 @@ export class FriendsComponent implements OnInit {
     private profileService: ProfileService,
     private friendsService: FriendsService,
     private messagesService: MessagesService,
+    private emailNotifications: EmailNotificationsService,
     private cdr: ChangeDetectorRef,
     private zone: NgZone,
     private route: ActivatedRoute,
@@ -152,11 +154,12 @@ export class FriendsComponent implements OnInit {
     });
 
     try {
-      await this.friendsService.sendRequest(this.currentProfile.id, profile.id);
+      const friendship = await this.friendsService.sendRequest(this.currentProfile.id, profile.id);
       await this.loadAll();
       this.syncView(() => {
         this.tab = 'requests';
       });
+      void this.emailNotifications.notifyFriendRequestSent(friendship.id, this.friendRequestsUrl());
     } catch (error) {
       console.error('Failed to send friend request', error);
       this.syncView(() => {
@@ -177,6 +180,7 @@ export class FriendsComponent implements OnInit {
 
     try {
       await this.friendsService.acceptRequest(friendship.id);
+      void this.emailNotifications.notifyFriendRequestAccepted(friendship.id, this.friendsHomeUrl());
       await this.loadAll();
     } catch (error) {
       console.error('Failed to accept friend request', error);
@@ -274,6 +278,13 @@ export class FriendsComponent implements OnInit {
       this.syncView(() => {
         this.chatMessageBody = '';
       });
+
+      void this.emailNotifications.notifyChatMessageReceived(
+        this.selectedFriend.friendship.id,
+        this.selectedFriend.friend.id,
+        body,
+        this.chatUrl(this.selectedFriend.friend.username)
+      );
 
       await this.loadConversation(this.selectedFriend);
     } catch (error) {
@@ -451,5 +462,17 @@ export class FriendsComponent implements OnInit {
       update();
       this.cdr.detectChanges();
     });
+  }
+
+  private friendRequestsUrl(): string {
+    return new URL('friends?tab=requests', document.baseURI).toString();
+  }
+
+  private friendsHomeUrl(): string {
+    return new URL('friends?tab=friends', document.baseURI).toString();
+  }
+
+  private chatUrl(username: string): string {
+    return new URL(`friends?tab=chat&chat=${encodeURIComponent(username)}`, document.baseURI).toString();
   }
 }

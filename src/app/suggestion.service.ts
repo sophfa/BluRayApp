@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { SupabaseService } from './supabase.service';
-import { Profile } from './profile.service';
+import { Profile, PUBLIC_PROFILE_FIELDS } from './profile.service';
 
 export type SuggestionStatus = 'new' | 'reviewing' | 'planned' | 'done' | 'dismissed';
 
@@ -43,7 +43,7 @@ export class SuggestionService {
     if (!client) return [];
 
     const { data, error } = await client.from('feature_suggestions')
-      .select('*, profile:profiles!profile_id(*)')
+      .select(`*, profile:profiles!profile_id(${PUBLIC_PROFILE_FIELDS})`)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -54,20 +54,25 @@ export class SuggestionService {
     return (data ?? []) as FeatureSuggestion[];
   }
 
-  public async create(auth0Id: string, profileId: string | null, title: string, body: string): Promise<void> {
+  public async create(auth0Id: string, profileId: string | null, title: string, body: string): Promise<FeatureSuggestion> {
     const client = await this.supabase.getClient();
     if (!client) throw new Error('Supabase unavailable');
 
-    const { error } = await client.from('feature_suggestions').insert({
-      auth0_id: auth0Id,
-      profile_id: profileId,
-      title,
-      body
-    });
+    const { data, error } = await client.from('feature_suggestions')
+      .insert({
+        auth0_id: auth0Id,
+        profile_id: profileId,
+        title,
+        body
+      })
+      .select('*')
+      .single();
 
     if (error) {
       throw this.describeWriteError(error);
     }
+
+    return data as FeatureSuggestion;
   }
 
   public async updateStatus(id: string, status: SuggestionStatus): Promise<void> {

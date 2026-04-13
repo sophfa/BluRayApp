@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { SupabaseService } from './supabase.service';
-import { Profile } from './profile.service';
+import { Profile, PUBLIC_PROFILE_FIELDS } from './profile.service';
 
 export interface ChatMessage {
   id: string;
@@ -23,7 +23,7 @@ export class MessagesService {
     if (!client) return [];
 
     const { data, error } = await client.from('friend_messages')
-      .select('*, sender:profiles!sender_profile_id(*), recipient:profiles!recipient_profile_id(*)')
+      .select(`*, sender:profiles!sender_profile_id(${PUBLIC_PROFILE_FIELDS}), recipient:profiles!recipient_profile_id(${PUBLIC_PROFILE_FIELDS})`)
       .eq('friendship_id', friendshipId)
       .order('created_at', { ascending: true });
 
@@ -40,7 +40,7 @@ export class MessagesService {
     if (!client) return [];
 
     const { data, error } = await client.from('friend_messages')
-      .select('*, sender:profiles!sender_profile_id(*), recipient:profiles!recipient_profile_id(*)')
+      .select(`*, sender:profiles!sender_profile_id(${PUBLIC_PROFILE_FIELDS}), recipient:profiles!recipient_profile_id(${PUBLIC_PROFILE_FIELDS})`)
       .eq('recipient_profile_id', profileId)
       .is('read_at', null)
       .order('created_at', { ascending: false });

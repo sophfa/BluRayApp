@@ -86,8 +86,12 @@ create table if not exists public.profiles (
   auth0_id text not null unique,
   username text not null unique,
   avatar_url text,
+  email text,
   created_at timestamptz not null default timezone('utc', now())
 );
+
+alter table public.profiles
+  add column if not exists email text;
 
 alter table public.profiles enable row level security;
 
@@ -206,6 +210,8 @@ using (
   )
 );
 ```
+
+The app keeps `profiles.email` in sync from Auth0 after sign-in so friend/chat/suggestion emails can be delivered without exposing email addresses to other users.
 
 ### 5. Let accepted friends read each other's collections
 
@@ -372,7 +378,32 @@ with check (
 );
 ```
 
-### 7. Create the avatars storage bucket
+### 7. Deploy the Resend notification function
+
+Email notifications are sent from the checked-in Supabase Edge Function at [notification-email/index.ts](/mnt/c/Repositories/BluRayApp/supabase/functions/notification-email/index.ts).
+
+Set these function secrets in Supabase:
+
+```bash
+supabase secrets set RESEND_API_KEY=your-resend-api-key
+supabase secrets set RESEND_FROM_EMAIL="My Collection <notifications@your-domain.example>"
+supabase secrets set ADMIN_NOTIFICATION_EMAILS="admin1@example.com,admin2@example.com"
+```
+
+Notes:
+
+- `RESEND_FROM_EMAIL` must be a sender address on a verified Resend domain.
+- `ADMIN_NOTIFICATION_EMAILS` is a comma-separated list of admin inbox recipients for site suggestions. The website still uses Auth0 `admin` / `user` roles for in-app permissions; this env var is only for email delivery targets.
+
+Deploy the function:
+
+```bash
+supabase functions deploy notification-email --no-verify-jwt
+```
+
+This repo uses Auth0 third-party JWTs in the browser, so the function is written to validate the caller by querying Supabase with the forwarded `Authorization` header before it looks up recipients or sends mail.
+
+### 8. Create the avatars storage bucket
 
 The profile setup screen uploads avatars to a bucket called `avatars`. Create it in Supabase and add storage policies:
 
@@ -429,7 +460,7 @@ If you already created the older avatar policies, rerun this whole block so the 
 
 If profile setup stays on `Saving...`, the most common causes are that `public.profiles` does not exist yet or the `avatars` bucket/policies have not been created.
 
-### 8. Configure the frontend runtime file
+### 9. Configure the frontend runtime file
 
 Update [public/app-config.json](/mnt/c/Repositories/BluRayApp/public/app-config.json):
 
@@ -443,7 +474,7 @@ Update [public/app-config.json](/mnt/c/Repositories/BluRayApp/public/app-config.
 
 `public/app-config.json` is intentionally public. Supabase publishable keys are designed for browser apps.
 
-### 9. Auth0 application URLs
+### 10. Auth0 application URLs
 
 In Auth0, make sure these are configured on the SPA app:
 

@@ -8,6 +8,7 @@ import { AuthRoleService } from '../auth-role.service';
 import { SuggestionService, FeatureSuggestion, SuggestionStatus } from '../suggestion.service';
 import { FriendsService, Friendship } from '../friends.service';
 import { MessagesService, ChatMessage } from '../messages.service';
+import { EmailNotificationsService } from '../email-notifications.service';
 
 interface UnreadConversation {
   username: string;
@@ -49,6 +50,7 @@ export class NotificationsComponent implements OnInit {
     private suggestionService: SuggestionService,
     private friendsService: FriendsService,
     private messagesService: MessagesService,
+    private emailNotifications: EmailNotificationsService,
     private cdr: ChangeDetectorRef,
     private zone: NgZone
   ) {}
@@ -106,11 +108,12 @@ export class NotificationsComponent implements OnInit {
     });
 
     try {
-      await this.suggestionService.create(this.auth0Id, this.currentProfile?.id ?? null, title, body);
+      const suggestion = await this.suggestionService.create(this.auth0Id, this.currentProfile?.id ?? null, title, body);
       this.syncView(() => {
         this.suggestionTitle = '';
         this.suggestionBody = '';
       });
+      void this.emailNotifications.notifySuggestionSubmitted(suggestion.id, this.notificationsUrl());
       await this.refresh();
     } catch (error) {
       console.error('Failed to submit suggestion', error);
@@ -131,6 +134,7 @@ export class NotificationsComponent implements OnInit {
 
     try {
       await this.suggestionService.updateStatus(suggestion.id, status);
+      void this.emailNotifications.notifySuggestionStatusChanged(suggestion.id, this.notificationsUrl());
       await this.refresh();
     } catch (error) {
       console.error('Failed to update suggestion status', error);
@@ -225,5 +229,9 @@ export class NotificationsComponent implements OnInit {
       update();
       this.cdr.detectChanges();
     });
+  }
+
+  private notificationsUrl(): string {
+    return new URL('notifications', document.baseURI).toString();
   }
 }

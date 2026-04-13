@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { SupabaseService } from './supabase.service';
-import { Profile } from './profile.service';
+import { Profile, PUBLIC_PROFILE_FIELDS } from './profile.service';
 
 export interface Friendship {
   id: string;
@@ -25,7 +25,7 @@ export class FriendsService {
     const client = await this.supabase.getClient();
     if (!client) return [];
     const { data, error } = await client.from('friendships')
-      .select('*, requester:profiles!requester_id(*), recipient:profiles!recipient_id(*)')
+      .select(`*, requester:profiles!requester_id(${PUBLIC_PROFILE_FIELDS}), recipient:profiles!recipient_id(${PUBLIC_PROFILE_FIELDS})`)
       .or(`requester_id.eq.${profileId},recipient_id.eq.${profileId}`)
       .eq('status', 'accepted');
     if (error) {
@@ -43,7 +43,7 @@ export class FriendsService {
     const client = await this.supabase.getClient();
     if (!client) return [];
     const { data, error } = await client.from('friendships')
-      .select('*, requester:profiles!requester_id(*)')
+      .select(`*, requester:profiles!requester_id(${PUBLIC_PROFILE_FIELDS})`)
       .eq('recipient_id', profileId)
       .eq('status', 'pending');
     if (error) {
@@ -57,7 +57,7 @@ export class FriendsService {
     const client = await this.supabase.getClient();
     if (!client) return [];
     const { data, error } = await client.from('friendships')
-      .select('*, recipient:profiles!recipient_id(*)')
+      .select(`*, recipient:profiles!recipient_id(${PUBLIC_PROFILE_FIELDS})`)
       .eq('requester_id', profileId)
       .eq('status', 'pending');
     if (error) {
@@ -67,12 +67,15 @@ export class FriendsService {
     return (data ?? []) as Friendship[];
   }
 
-  public async sendRequest(requesterId: string, recipientId: string): Promise<void> {
+  public async sendRequest(requesterId: string, recipientId: string): Promise<Friendship> {
     const client = await this.supabase.getClient();
     if (!client) throw new Error('Supabase unavailable');
-    const { error } = await client.from('friendships')
-      .insert({ requester_id: requesterId, recipient_id: recipientId });
+    const { data, error } = await client.from('friendships')
+      .insert({ requester_id: requesterId, recipient_id: recipientId })
+      .select('*')
+      .single();
     if (error) throw this.describeWriteError(error);
+    return data as Friendship;
   }
 
   public async acceptRequest(friendshipId: string): Promise<void> {

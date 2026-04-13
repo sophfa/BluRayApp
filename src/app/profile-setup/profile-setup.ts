@@ -24,6 +24,7 @@ export class ProfileSetupComponent implements OnInit {
   public error = '';
   public auth0DisplayName = '';
   private auth0Id: string | null = null;
+  private auth0Email: string | null = null;
 
   constructor(
     private auth0: AuthService,
@@ -37,6 +38,7 @@ export class ProfileSetupComponent implements OnInit {
     if (!user?.sub) { this.router.navigate(['/']); return; }
 
     this.auth0Id = user.sub;
+    this.auth0Email = typeof user.email === 'string' ? user.email : null;
 
     // Pre-fill username from Auth0 nickname/name if available
     this.auth0DisplayName = user.name ?? user.nickname ?? '';
@@ -72,7 +74,7 @@ export class ProfileSetupComponent implements OnInit {
       }
 
       await this.withTimeout(
-        this.profileService.create(auth0Id, this.username.trim(), avatarUrl),
+        this.profileService.create(auth0Id, this.username.trim(), avatarUrl, this.auth0Email),
         'Profile save'
       );
 
