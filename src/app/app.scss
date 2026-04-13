@@ -168,6 +168,19 @@
   overflow: hidden;
 }
 
+.session-menu__role {
+  align-self: flex-start;
+  margin-top: 0.55rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: #1f2d27;
+  color: #a7f3d0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
 .session-menu__button {
   width: 100%;
   padding: 0.7rem 0.9rem;

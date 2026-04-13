@@ -1,0 +1,162 @@
+<div class="notifications-page">
+  <header class="notifications-header">
+    <button class="back-btn" type="button" (click)="goBack()" aria-label="Back">
+      <i class="pi pi-arrow-left"></i>
+    </button>
+    <div>
+      <p class="eyebrow">Notifications</p>
+      <h1>Updates and Suggestions</h1>
+      <p class="subcopy">
+        Track incoming chat and friend activity, and send ideas for improving the site.
+      </p>
+    </div>
+  </header>
+
+  <div class="loading" *ngIf="loading">Loading notifications...</div>
+
+  <ng-container *ngIf="!loading">
+    <div class="error-banner" *ngIf="error">{{ error }}</div>
+
+    <section class="panel status-panel">
+      <div class="status-card">
+        <span class="status-label">Friend requests</span>
+        <strong>{{ pendingRequests.length }}</strong>
+        <button type="button" class="status-link" (click)="openRequests()">Open requests</button>
+      </div>
+      <div class="status-card">
+        <span class="status-label">Unread chats</span>
+        <strong>{{ unreadMessages.length }}</strong>
+        <span class="status-hint">Unread messages from friends</span>
+      </div>
+      <div class="status-card" *ngIf="isAdmin">
+        <span class="status-label">Admin inbox</span>
+        <strong>{{ adminNewSuggestionCount }}</strong>
+        <span class="status-hint">New site suggestions awaiting review</span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">Suggest an Improvement</p>
+          <h2>Send feedback to the admin team</h2>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <label class="field">
+          <span>Title</span>
+          <input
+            type="text"
+            [(ngModel)]="suggestionTitle"
+            maxlength="120"
+            placeholder="e.g. Add wishlist support"
+          />
+        </label>
+        <label class="field">
+          <span>Details</span>
+          <textarea
+            rows="5"
+            [(ngModel)]="suggestionBody"
+            maxlength="2000"
+            placeholder="What would make the site better?"
+          ></textarea>
+        </label>
+      </div>
+
+      <div class="actions">
+        <button
+          type="button"
+          class="primary-btn"
+          [disabled]="savingSuggestion || !suggestionTitle.trim() || !suggestionBody.trim()"
+          (click)="submitSuggestion()"
+        >
+          {{ savingSuggestion ? 'Sending...' : 'Send Suggestion' }}
+        </button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">Unread Chat</p>
+          <h2>Conversations needing attention</h2>
+        </div>
+      </div>
+
+      <div class="empty" *ngIf="unreadMessageConversations.length === 0">
+        No unread messages right now.
+      </div>
+
+      <div class="list" *ngIf="unreadMessageConversations.length > 0">
+        <article class="list-row" *ngFor="let conversation of unreadMessageConversations">
+          <div class="list-copy">
+            <strong>{{ conversation.username }}</strong>
+            <p>{{ conversation.latestMessage }}</p>
+          </div>
+          <div class="list-actions">
+            <span class="count-pill">{{ conversation.count }}</span>
+            <button type="button" class="secondary-btn" (click)="openChat(conversation.username)">Open chat</button>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">My Suggestions</p>
+          <h2>What you have already sent</h2>
+        </div>
+      </div>
+
+      <div class="empty" *ngIf="ownSuggestions.length === 0">
+        You have not sent any suggestions yet.
+      </div>
+
+      <div class="list" *ngIf="ownSuggestions.length > 0">
+        <article class="suggestion-card" *ngFor="let suggestion of ownSuggestions; trackBy: trackById">
+          <div class="suggestion-top">
+            <strong>{{ suggestion.title }}</strong>
+            <span class="status-pill" [ngClass]="'status-' + suggestion.status">{{ suggestion.status }}</span>
+          </div>
+          <p>{{ suggestion.body }}</p>
+          <span class="meta">{{ suggestion.created_at | date:'medium' }}</span>
+        </article>
+      </div>
+    </section>
+
+    <section class="panel" *ngIf="isAdmin">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">Admin Inbox</p>
+          <h2>Suggestion notifications for admins</h2>
+        </div>
+      </div>
+
+      <div class="empty" *ngIf="adminSuggestions.length === 0">
+        No suggestions have been submitted yet.
+      </div>
+
+      <div class="list" *ngIf="adminSuggestions.length > 0">
+        <article class="suggestion-card admin-card" *ngFor="let suggestion of adminSuggestions; trackBy: trackById">
+          <div class="suggestion-top">
+            <div>
+              <strong>{{ suggestion.title }}</strong>
+              <span class="meta" *ngIf="suggestion.profile?.username">@{{ suggestion.profile?.username }}</span>
+            </div>
+            <select
+              class="status-select"
+              [ngModel]="suggestion.status"
+              (ngModelChange)="updateSuggestionStatus(suggestion, $event)"
+            >
+              <option *ngFor="let status of adminStatuses" [value]="status">{{ status }}</option>
+            </select>
+          </div>
+          <p>{{ suggestion.body }}</p>
+          <span class="meta">{{ suggestion.created_at | date:'medium' }}</span>
+        </article>
+      </div>
+    </section>
+  </ng-container>
+</div>

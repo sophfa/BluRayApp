@@ -9,6 +9,7 @@ import { INITIAL_MOVIES } from './movies.data';
 import { CollectionComponent } from './collection/collection';
 import { ProfileSetupComponent } from './profile-setup/profile-setup';
 import { FriendsComponent } from './friends/friends';
+import { NotificationsComponent } from './notifications/notifications';
 import { ProfileGuard } from './guards/profile.guard';
 
 const collectionGuards = [AuthGuard, ProfileGuard];
@@ -31,6 +32,7 @@ export const appConfig: ApplicationConfig = {
       { path: '', pathMatch: 'full', redirectTo: 'bluray' },
 
       { path: 'profile-setup', component: ProfileSetupComponent, canActivate: [AuthGuard] },
+      { path: 'notifications', component: NotificationsComponent, canActivate: collectionGuards },
 
       { path: 'friends', component: FriendsComponent, canActivate: collectionGuards },
 

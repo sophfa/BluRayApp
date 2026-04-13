@@ -55,6 +55,7 @@ export class CollectionComponent implements OnInit {
   public isReadOnly = false;
   public friendUsername = '';
   public friendDisplayName = '';
+  public loadError = '';
 
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
@@ -77,11 +78,16 @@ export class CollectionComponent implements OnInit {
 
   private async initialize() {
     if (this.isReadOnly && this.friendUsername) {
-      const profile = await this.profileService.getByUsername(this.friendUsername);
-      if (profile) {
-        this.friendDisplayName = profile.username;
-        const loaded = await this.storage.loadMoviesForUser(profile.auth0_id, this.collectionKey);
-        this.movies.set(loaded);
+      try {
+        const profile = await this.profileService.getByUsername(this.friendUsername);
+        if (profile) {
+          this.friendDisplayName = profile.username;
+          const loaded = await this.storage.loadMoviesForUser(profile.auth0_id, this.collectionKey);
+          this.movies.set(loaded);
+        }
+      } catch (error) {
+        console.warn('Failed to load friend collection', error);
+        this.loadError = 'Friend collections are blocked until the accepted-friends read policy is added in Supabase.';
       }
       this.isLoaded = true;
       return;

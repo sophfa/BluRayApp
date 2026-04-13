@@ -17,7 +17,9 @@
           <div class="session-menu__identity" *ngIf="userDisplay$ | async as userDisplay">
             <span class="session-menu__label">Signed in</span>
             <span class="session-menu__value">{{ userDisplay }}</span>
+            <span class="session-menu__role" *ngIf="primaryRole$ | async as role">{{ role }}</span>
           </div>
+          <button class="session-menu__button" type="button" (click)="openNotifications()">Notifications</button>
           <button class="session-menu__button" type="button" (click)="logOut()">Log out</button>
         </section>
       </div>

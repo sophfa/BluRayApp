@@ -22,18 +22,24 @@ In Supabase:
 3. Use your Auth0 tenant `dev-e0rni53ebj3apjt5`.
 4. Save the integration.
 
-### 2. Add the required Auth0 token claim
+### 2. Add the required Auth0 token claims and roles
 
-Supabase RLS expects an authenticated JWT role. Add a Post-Login Action in Auth0 and attach it to the Login flow:
+Create Auth0 roles named `user` and `admin`, assign them to the right people, then add a Post-Login Action in Auth0 and attach it to the Login flow:
 
 ```js
 exports.onExecutePostLogin = async (event, api) => {
+  const namespace = 'https://mycollection.uk';
+  const roles = event.authorization?.roles ?? [];
+
   api.idToken.setCustomClaim('role', 'authenticated');
   api.accessToken.setCustomClaim('role', 'authenticated');
+
+  api.idToken.setCustomClaim(`${namespace}/roles`, roles);
+  api.accessToken.setCustomClaim(`${namespace}/roles`, roles);
 };
 ```
 
-This app currently sends the Auth0 ID token to Supabase, so the `idToken` claim is required here.
+This app currently sends the Auth0 ID token to Supabase, so both the authenticated `role` claim and the namespaced roles claim on the ID token are required here.
 
 ### 3. Create the per-user state table
 
@@ -201,7 +207,172 @@ using (
 );
 ```
 
-### 5. Create the avatars storage bucket
+### 5. Let accepted friends read each other's collections
+
+If you want the read-only friend collection pages to work, add this extra `select` policy to `public.user_app_state`:
+
+```sql
+drop policy if exists "accepted friends can read app state" on public.user_app_state;
+
+create policy "accepted friends can read app state"
+on public.user_app_state
+for select
+to authenticated
+using (
+  exists (
+    select 1
+    from public.profiles owner_profile
+    join public.profiles viewer_profile
+      on viewer_profile.auth0_id = (auth.jwt() ->> 'sub')
+    join public.friendships friendship
+      on friendship.status = 'accepted'
+     and (
+       (friendship.requester_id = owner_profile.id and friendship.recipient_id = viewer_profile.id)
+       or
+       (friendship.recipient_id = owner_profile.id and friendship.requester_id = viewer_profile.id)
+     )
+    where owner_profile.auth0_id = public.user_app_state.owner_user_id
+  )
+);
+```
+
+### 6. Create the suggestions and chat tables
+
+The notifications page uses suggestions plus unread friend messages. Run this SQL too:
+
+```sql
+create table if not exists public.feature_suggestions (
+  id uuid primary key default gen_random_uuid(),
+  auth0_id text not null,
+  profile_id uuid references public.profiles(id) on delete set null,
+  title text not null check (char_length(trim(title)) >= 3),
+  body text not null check (char_length(trim(body)) >= 10),
+  status text not null default 'new' check (status in ('new', 'reviewing', 'planned', 'done', 'dismissed')),
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now()),
+  reviewed_by_auth0_id text
+);
+
+alter table public.feature_suggestions enable row level security;
+
+drop policy if exists "users or admins read suggestions" on public.feature_suggestions;
+drop policy if exists "users submit own suggestions" on public.feature_suggestions;
+drop policy if exists "admins update suggestions" on public.feature_suggestions;
+
+create policy "users or admins read suggestions"
+on public.feature_suggestions
+for select
+to authenticated
+using (
+  auth0_id = (auth.jwt() ->> 'sub')
+  or coalesce((auth.jwt() -> 'https://mycollection.uk/roles') ? 'admin', false)
+);
+
+create policy "users submit own suggestions"
+on public.feature_suggestions
+for insert
+to authenticated
+with check (
+  auth0_id = (auth.jwt() ->> 'sub')
+  and (
+    profile_id is null
+    or exists (
+      select 1
+      from public.profiles profile
+      where profile.id = public.feature_suggestions.profile_id
+        and profile.auth0_id = public.feature_suggestions.auth0_id
+    )
+  )
+);
+
+create policy "admins update suggestions"
+on public.feature_suggestions
+for update
+to authenticated
+using (coalesce((auth.jwt() -> 'https://mycollection.uk/roles') ? 'admin', false))
+with check (coalesce((auth.jwt() -> 'https://mycollection.uk/roles') ? 'admin', false));
+
+create table if not exists public.friend_messages (
+  id uuid primary key default gen_random_uuid(),
+  friendship_id uuid not null references public.friendships(id) on delete cascade,
+  sender_profile_id uuid not null references public.profiles(id) on delete cascade,
+  recipient_profile_id uuid not null references public.profiles(id) on delete cascade,
+  body text not null check (char_length(trim(body)) >= 1),
+  created_at timestamptz not null default timezone('utc', now()),
+  read_at timestamptz
+);
+
+create index if not exists friend_messages_friendship_created_at_idx
+  on public.friend_messages(friendship_id, created_at);
+
+create index if not exists friend_messages_recipient_unread_idx
+  on public.friend_messages(recipient_profile_id, read_at, created_at);
+
+alter table public.friend_messages enable row level security;
+
+drop policy if exists "friends read messages" on public.friend_messages;
+drop policy if exists "friends send messages" on public.friend_messages;
+drop policy if exists "recipients mark messages as read" on public.friend_messages;
+
+create policy "friends read messages"
+on public.friend_messages
+for select
+to authenticated
+using (
+  exists (
+    select 1
+    from public.profiles me
+    join public.friendships friendship
+      on friendship.id = public.friend_messages.friendship_id
+     and friendship.status = 'accepted'
+    where me.auth0_id = (auth.jwt() ->> 'sub')
+      and me.id in (public.friend_messages.sender_profile_id, public.friend_messages.recipient_profile_id)
+      and me.id in (friendship.requester_id, friendship.recipient_id)
+  )
+);
+
+create policy "friends send messages"
+on public.friend_messages
+for insert
+to authenticated
+with check (
+  exists (
+    select 1
+    from public.profiles me
+    join public.friendships friendship
+      on friendship.id = public.friend_messages.friendship_id
+     and friendship.status = 'accepted'
+    where me.auth0_id = (auth.jwt() ->> 'sub')
+      and me.id = public.friend_messages.sender_profile_id
+      and me.id in (friendship.requester_id, friendship.recipient_id)
+      and public.friend_messages.recipient_profile_id in (friendship.requester_id, friendship.recipient_id)
+      and public.friend_messages.recipient_profile_id <> public.friend_messages.sender_profile_id
+  )
+);
+
+create policy "recipients mark messages as read"
+on public.friend_messages
+for update
+to authenticated
+using (
+  exists (
+    select 1
+    from public.profiles me
+    where me.auth0_id = (auth.jwt() ->> 'sub')
+      and me.id = public.friend_messages.recipient_profile_id
+  )
+)
+with check (
+  exists (
+    select 1
+    from public.profiles me
+    where me.auth0_id = (auth.jwt() ->> 'sub')
+      and me.id = public.friend_messages.recipient_profile_id
+  )
+);
+```
+
+### 7. Create the avatars storage bucket
 
 The profile setup screen uploads avatars to a bucket called `avatars`. Create it in Supabase and add storage policies:
 
@@ -258,7 +429,7 @@ If you already created the older avatar policies, rerun this whole block so the 
 
 If profile setup stays on `Saving...`, the most common causes are that `public.profiles` does not exist yet or the `avatars` bucket/policies have not been created.
 
-### 6. Configure the frontend runtime file
+### 8. Configure the frontend runtime file
 
 Update [public/app-config.json](/mnt/c/Repositories/BluRayApp/public/app-config.json):
 
@@ -272,7 +443,7 @@ Update [public/app-config.json](/mnt/c/Repositories/BluRayApp/public/app-config.
 
 `public/app-config.json` is intentionally public. Supabase publishable keys are designed for browser apps.
 
-### 7. Auth0 application URLs
+### 9. Auth0 application URLs
 
 In Auth0, make sure these are configured on the SPA app:
 

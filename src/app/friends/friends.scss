@@ -1,10 +1,9 @@
 .friends-page {
-  max-width: 600px;
+  max-width: 980px;
   margin: 0 auto;
   padding: 0 16px 60px;
 }
 
-// ── Header ────────────────────────────────────
 .friends-header {
   display: flex;
   align-items: center;
@@ -25,7 +24,11 @@
   cursor: pointer;
   flex-shrink: 0;
   transition: background 0.15s, color 0.15s;
-  &:hover { background: #25253a; color: #e2e2e8; }
+
+  &:hover {
+    background: #25253a;
+    color: #e2e2e8;
+  }
 }
 
 .header-text h1 {
@@ -40,13 +43,11 @@
   margin-top: 2px;
 }
 
-// ── Tabs ──────────────────────────────────────
 .tabs {
   display: flex;
   gap: 4px;
   margin-bottom: 20px;
   border-bottom: 1px solid #1e1e28;
-  padding-bottom: 0;
 }
 
 .tab {
@@ -65,26 +66,39 @@
   transition: color 0.15s, border-color 0.15s;
   margin-bottom: -1px;
 
-  &:hover { color: #aaa; }
-  &.active { color: #818cf8; border-bottom-color: #4f46e5; }
+  &:hover {
+    color: #aaa;
+  }
+
+  &.active {
+    color: #818cf8;
+    border-bottom-color: #4f46e5;
+  }
 }
 
-.badge {
+.badge,
+.count-pill {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-width: 18px;
   height: 18px;
   padding: 0 5px;
-  background: #25253a;
   border-radius: 999px;
   font-size: 0.7rem;
-  color: #aaa;
-
-  &-alert { background: #4f46e5; color: #fff; }
 }
 
-// ── Friend row ────────────────────────────────
+.badge {
+  background: #25253a;
+  color: #aaa;
+}
+
+.badge-alert,
+.count-pill {
+  background: #4f46e5;
+  color: #fff;
+}
+
 .friend-row {
   display: flex;
   align-items: center;
@@ -108,7 +122,11 @@
   overflow: hidden;
   border: 1px solid #2a2a38;
 
-  img { width: 100%; height: 100%; object-fit: cover; }
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 }
 
 .friend-info {
@@ -129,7 +147,9 @@
   color: #555;
   margin-top: 1px;
 
-  &.relation-label { color: #4f46e5; }
+  &.relation-label {
+    color: #4f46e5;
+  }
 }
 
 .friend-actions {
@@ -153,30 +173,45 @@
   cursor: pointer;
   transition: all 0.15s;
 
-  &:hover:not(:disabled) { background: #25253a; color: #ccc; }
-  &:disabled { opacity: 0.4; cursor: default; }
+  &:hover:not(:disabled) {
+    background: #25253a;
+    color: #ccc;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
 
   &--accept {
     background: #1e1b4b;
     border-color: #4f46e5;
     color: #818cf8;
-    &:hover:not(:disabled) { background: #2e2a6e; }
+
+    &:hover:not(:disabled) {
+      background: #2e2a6e;
+    }
   }
 
   &--danger {
-    &:hover:not(:disabled) { background: #2d1a1a; border-color: #ef4444; color: #f87171; }
+    &:hover:not(:disabled) {
+      background: #2d1a1a;
+      border-color: #ef4444;
+      color: #f87171;
+    }
   }
 }
 
-// ── Search ────────────────────────────────────
 .search-wrap {
   display: flex;
   gap: 8px;
   margin-bottom: 16px;
 }
 
-.search-input {
-  flex: 1;
+.search-input,
+.chat-compose textarea,
+.chat-panel select {
+  width: 100%;
   padding: 9px 14px;
   background: #1a1a24;
   border: 1px solid #2a2a38;
@@ -185,8 +220,14 @@
   font-size: 0.9rem;
   font-family: inherit;
   outline: none;
-  &:focus { border-color: #4f46e5; }
-  &::placeholder { color: #444; }
+
+  &:focus {
+    border-color: #4f46e5;
+  }
+
+  &::placeholder {
+    color: #444;
+  }
 }
 
 .search-go {
@@ -200,17 +241,162 @@
   font-family: inherit;
   cursor: pointer;
   transition: background 0.15s;
-  &:hover:not(:disabled) { background: #4338ca; }
-  &:disabled { opacity: 0.4; cursor: default; }
+
+  &:hover:not(:disabled) {
+    background: #4338ca;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
 }
 
-// ── Misc ──────────────────────────────────────
+.chat-shell {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) 1fr;
+  gap: 14px;
+}
+
+.chat-sidebar,
+.chat-panel {
+  min-height: 460px;
+  padding: 14px;
+  border: 1px solid #232637;
+  border-radius: 18px;
+  background: #12141d;
+}
+
+.chat-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chat-sidebar__head {
+  margin-bottom: 4px;
+
+  h3 {
+    color: #eef2ff;
+  }
+
+  p {
+    color: #666;
+    font-size: 0.82rem;
+    margin-top: 4px;
+  }
+}
+
+.chat-friend-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #232637;
+  border-radius: 14px;
+  background: #0f1118;
+  color: #d5daf0;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+
+  &:hover,
+  &.is-active {
+    border-color: #4f46e5;
+    background: #171a26;
+  }
+}
+
+.chat-friend-btn__name {
+  font-weight: 600;
+}
+
+.chat-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.chat-panel__head {
+  padding-bottom: 10px;
+  border-bottom: 1px solid #1e1e28;
+
+  h3 {
+    color: #eef2ff;
+  }
+
+  p {
+    margin-top: 4px;
+    color: #666;
+    font-size: 0.82rem;
+  }
+}
+
+.chat-messages {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.chat-message {
+  display: flex;
+}
+
+.chat-message--mine {
+  justify-content: flex-end;
+}
+
+.chat-message__bubble {
+  max-width: min(34rem, 80%);
+  padding: 10px 12px;
+  border: 1px solid #232637;
+  border-radius: 14px;
+  background: #171922;
+
+  p {
+    color: #eef2ff;
+    white-space: pre-wrap;
+  }
+
+  span {
+    display: block;
+    margin-top: 6px;
+    color: #666;
+    font-size: 0.72rem;
+  }
+}
+
+.chat-message--mine .chat-message__bubble {
+  background: #1e1b4b;
+  border-color: #4f46e5;
+}
+
+.chat-compose {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+
+  textarea {
+    min-height: 74px;
+    resize: vertical;
+  }
+}
+
 .section-label {
   font-size: 0.72rem;
   color: #444;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin: 4px 0 8px;
+}
+
+.section-label--spaced {
+  margin-top: 24px;
 }
 
 .empty {
@@ -234,4 +420,40 @@
   background: #271419;
   color: #f0b6bf;
   font-size: 0.88rem;
+}
+
+@media (max-width: 860px) {
+  .chat-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .friend-row {
+    align-items: flex-start;
+  }
+
+  .friend-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 640px) {
+  .tabs {
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .friend-row {
+    flex-wrap: wrap;
+  }
+
+  .friend-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .chat-compose {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }

@@ -1,8 +1,9 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Router, RouterOutlet } from '@angular/router';
 import { AuthService } from '@auth0/auth0-angular';
 import { map } from 'rxjs';
+import { AuthRoleService } from './auth-role.service';
 
 @Component({
   selector: 'app-root',
@@ -13,9 +14,12 @@ import { map } from 'rxjs';
 })
 export class App {
   protected readonly auth = inject(AuthService);
+  protected readonly router = inject(Router);
+  protected readonly authRoles = inject(AuthRoleService);
   protected readonly returnTo = document.baseURI;
   protected readonly isLoading$ = this.auth.isLoading$;
   protected readonly isAuthenticated$ = this.auth.isAuthenticated$;
+  protected readonly primaryRole$ = this.authRoles.primaryRole$;
   protected menuOpen = false;
   protected readonly userDisplay$ = this.auth.user$.pipe(
     map((user) => user?.email ?? user?.name ?? user?.nickname ?? 'Signed in')
@@ -53,6 +57,11 @@ export class App {
 
   protected closeSessionMenu() {
     this.menuOpen = false;
+  }
+
+  protected openNotifications() {
+    this.closeSessionMenu();
+    void this.router.navigate(['/notifications']);
   }
 
   protected logOut() {

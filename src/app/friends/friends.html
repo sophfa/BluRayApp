@@ -1,6 +1,4 @@
 <div class="friends-page">
-
-  <!-- Header -->
   <header class="friends-header">
     <button class="back-btn" (click)="router.navigate(['/bluray'])" aria-label="Back">
       <i class="pi pi-arrow-left"></i>
@@ -16,22 +14,24 @@
   <ng-container *ngIf="!loading">
     <div class="error-banner" *ngIf="error">{{ error }}</div>
 
-    <!-- Tabs -->
     <div class="tabs">
-      <button class="tab" [class.active]="tab === 'friends'" (click)="tab = 'friends'">
+      <button class="tab" [class.active]="tab === 'friends'" (click)="setTab('friends')">
         <i class="pi pi-users"></i> Friends
         <span class="badge" *ngIf="friends.length">{{ friends.length }}</span>
       </button>
-      <button class="tab" [class.active]="tab === 'requests'" (click)="tab = 'requests'">
+      <button class="tab" [class.active]="tab === 'requests'" (click)="setTab('requests')">
         <i class="pi pi-bell"></i> Requests
         <span class="badge badge-alert" *ngIf="pendingCount">{{ pendingCount }}</span>
       </button>
-      <button class="tab" [class.active]="tab === 'find'" (click)="tab = 'find'">
+      <button class="tab" [class.active]="tab === 'chat'" (click)="setTab('chat')">
+        <i class="pi pi-comments"></i> Chat
+        <span class="badge badge-alert" *ngIf="unreadChatCount">{{ unreadChatCount }}</span>
+      </button>
+      <button class="tab" [class.active]="tab === 'find'" (click)="setTab('find')">
         <i class="pi pi-search"></i> Find
       </button>
     </div>
 
-    <!-- Friends list -->
     <div *ngIf="tab === 'friends'">
       <div class="empty" *ngIf="friends.length === 0">
         No friends yet. Use the Find tab to add people!
@@ -45,23 +45,28 @@
           <span class="friend-name">{{ entry.friend.username }}</span>
         </div>
         <div class="friend-actions">
+          <button class="action-btn" (click)="openChat(entry)">
+            <i class="pi pi-comments"></i> Chat
+            <span class="badge badge-alert" *ngIf="unreadForFriend(entry)">{{ unreadForFriend(entry) }}</span>
+          </button>
           <button class="action-btn" (click)="viewCollection(entry.friend.username)">
             <i class="pi pi-eye"></i> View
           </button>
-          <button class="action-btn action-btn--danger"
+          <button
+            class="action-btn action-btn--danger"
             [disabled]="actionInProgress[entry.friendship.id]"
-            (click)="removeFriend(entry)">
+            (click)="removeFriend(entry)"
+          >
             <i class="pi pi-user-minus"></i>
           </button>
         </div>
       </div>
     </div>
 
-    <!-- Requests tab -->
     <div *ngIf="tab === 'requests'">
       <h3 class="section-label">Received</h3>
       <div class="empty" *ngIf="pendingReceived.length === 0">No incoming requests.</div>
-      <div class="friend-row" *ngFor="let req of pendingReceived">
+      <div class="friend-row" *ngFor="let req of pendingReceived; trackBy: trackById">
         <div class="friend-avatar">
           <img *ngIf="req.requester?.avatar_url" [src]="req.requester!.avatar_url!" [alt]="req.requester!.username" />
           <span *ngIf="!req.requester?.avatar_url">{{ initials(req.requester?.username ?? '?') }}</span>
@@ -71,18 +76,14 @@
           <span class="friend-sub">wants to be friends</span>
         </div>
         <div class="friend-actions">
-          <button class="action-btn action-btn--accept"
-            [disabled]="actionInProgress[req.id]"
-            (click)="accept(req)">Accept</button>
-          <button class="action-btn action-btn--danger"
-            [disabled]="actionInProgress[req.id]"
-            (click)="decline(req)">Decline</button>
+          <button class="action-btn action-btn--accept" [disabled]="actionInProgress[req.id]" (click)="accept(req)">Accept</button>
+          <button class="action-btn action-btn--danger" [disabled]="actionInProgress[req.id]" (click)="decline(req)">Decline</button>
         </div>
       </div>
 
-      <h3 class="section-label" style="margin-top:24px">Sent</h3>
+      <h3 class="section-label section-label--spaced">Sent</h3>
       <div class="empty" *ngIf="pendingSent.length === 0">No pending sent requests.</div>
-      <div class="friend-row" *ngFor="let req of pendingSent">
+      <div class="friend-row" *ngFor="let req of pendingSent; trackBy: trackById">
         <div class="friend-avatar">
           <img *ngIf="req.recipient?.avatar_url" [src]="req.recipient!.avatar_url!" [alt]="req.recipient!.username" />
           <span *ngIf="!req.recipient?.avatar_url">{{ initials(req.recipient?.username ?? '?') }}</span>
@@ -92,14 +93,86 @@
           <span class="friend-sub">request pending</span>
         </div>
         <div class="friend-actions">
-          <button class="action-btn action-btn--danger"
-            [disabled]="actionInProgress[req.id]"
-            (click)="decline(req)">Cancel</button>
+          <button class="action-btn action-btn--danger" [disabled]="actionInProgress[req.id]" (click)="decline(req)">Cancel</button>
         </div>
       </div>
     </div>
 
-    <!-- Find tab -->
+    <div *ngIf="tab === 'chat'" class="chat-shell">
+      <div class="chat-sidebar">
+        <div class="chat-sidebar__head">
+          <h3>Conversations</h3>
+          <p *ngIf="friends.length > 0">Choose a friend to start chatting.</p>
+        </div>
+
+        <div class="empty" *ngIf="friends.length === 0">
+          Add and accept a friend first to unlock chat.
+        </div>
+
+        <button
+          *ngFor="let entry of friends"
+          type="button"
+          class="chat-friend-btn"
+          [class.is-active]="selectedFriendshipId === entry.friendship.id"
+          (click)="openChat(entry)"
+        >
+          <span class="chat-friend-btn__name">{{ entry.friend.username }}</span>
+          <span class="count-pill" *ngIf="unreadForFriend(entry)">{{ unreadForFriend(entry) }}</span>
+        </button>
+      </div>
+
+      <div class="chat-panel">
+        <div class="empty" *ngIf="!selectedFriend && friends.length > 0">
+          Select a friend to view your conversation.
+        </div>
+
+        <ng-container *ngIf="selectedFriend">
+          <header class="chat-panel__head">
+            <div>
+              <h3>{{ selectedFriend.friend.username }}</h3>
+              <p>Friend chat</p>
+            </div>
+          </header>
+
+          <div class="empty" *ngIf="chatLoading">Loading conversation...</div>
+
+          <div class="chat-messages" *ngIf="!chatLoading">
+            <div class="empty" *ngIf="chatMessages.length === 0">
+              No messages yet. Say hello.
+            </div>
+
+            <article
+              class="chat-message"
+              [class.chat-message--mine]="isOwnMessage(message)"
+              *ngFor="let message of chatMessages; trackBy: trackById"
+            >
+              <div class="chat-message__bubble">
+                <p>{{ message.body }}</p>
+                <span>{{ message.created_at | date:'short' }}</span>
+              </div>
+            </article>
+          </div>
+
+          <div class="chat-compose">
+            <textarea
+              rows="3"
+              [(ngModel)]="chatMessageBody"
+              placeholder="Write a message..."
+              [disabled]="sendingChat"
+            ></textarea>
+            <button
+              type="button"
+              class="action-btn action-btn--accept"
+              [disabled]="sendingChat || !chatMessageBody.trim()"
+              (click)="sendChatMessage()"
+            >
+              {{ sendingChat ? 'Sending...' : 'Send' }}
+            </button>
+          </div>
+        </ng-container>
+      </div>
+    </div>
+
     <div *ngIf="tab === 'find'">
       <div class="search-wrap">
         <input
@@ -116,7 +189,7 @@
 
       <div class="empty" *ngIf="searchDone && searchResults.length === 0">No users found.</div>
 
-      <div class="friend-row" *ngFor="let profile of searchResults">
+      <div class="friend-row" *ngFor="let profile of searchResults; trackBy: trackById">
         <div class="friend-avatar" [class.has-img]="profile.avatar_url">
           <img *ngIf="profile.avatar_url" [src]="profile.avatar_url" [alt]="profile.username" />
           <span *ngIf="!profile.avatar_url">{{ initials(profile.username) }}</span>
@@ -128,9 +201,7 @@
           </span>
         </div>
         <div class="friend-actions" *ngIf="canAddFriend(profile)">
-          <button class="action-btn action-btn--accept"
-            [disabled]="actionInProgress[profile.id]"
-            (click)="sendRequest(profile)">
+          <button class="action-btn action-btn--accept" [disabled]="actionInProgress[profile.id]" (click)="sendRequest(profile)">
             <i class="pi pi-user-plus"></i> Add
           </button>
         </div>

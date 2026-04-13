@@ -124,6 +124,16 @@
   }
 }
 
+.collection-error {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border: 1px solid #5b1f29;
+  border-radius: 12px;
+  background: #271419;
+  color: #f0b6bf;
+  font-size: 0.86rem;
+}
+
 // ── Controls ─────────────────────────────────────────────
 .controls {
   display: flex;

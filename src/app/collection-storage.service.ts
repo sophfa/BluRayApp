@@ -74,12 +74,15 @@ export class CollectionStorageService {
   public async loadMoviesForUser(ownerUserId: string, collectionKey: string): Promise<Movie[]> {
     await this.initialize();
     if (!this.client) return [];
-    const { data } = await this.client
+    const { data, error } = await this.client
       .from(this.config.stateTable)
       .select('movies')
       .eq('owner_user_id', ownerUserId)
       .eq('collection_key', collectionKey)
       .maybeSingle();
+    if (error) {
+      throw error;
+    }
     return this.isMovieArray(data?.['movies']) ? data!['movies'] : [];
   }
 
