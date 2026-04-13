@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, NgZone, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { COLLECTION_DEFINITIONS, CollectionType, normalizeEnabledCollections } from '../collection-types';
@@ -26,6 +26,8 @@ export class SettingsComponent {
   private readonly router = inject(Router);
   private readonly supabase = inject(SupabaseService);
   private readonly profileService = inject(ProfileService);
+  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly zone = inject(NgZone);
 
   public async ngOnInit() {
     try {
@@ -37,13 +39,19 @@ export class SettingsComponent {
         return;
       }
 
-      this.auth0Id = auth0Id;
-      this.selectedCollections = normalizeEnabledCollections(profile.enabled_collections);
+      this.syncView(() => {
+        this.auth0Id = auth0Id;
+        this.selectedCollections = normalizeEnabledCollections(profile.enabled_collections);
+      });
     } catch (error) {
       console.error('Failed to load settings', error);
-      this.error = 'Failed to load settings.';
+      this.syncView(() => {
+        this.error = 'Failed to load settings.';
+      });
     } finally {
-      this.loading = false;
+      this.syncView(() => {
+        this.loading = false;
+      });
     }
   }
 
@@ -71,19 +79,27 @@ export class SettingsComponent {
       return;
     }
 
-    this.saving = true;
-    this.error = '';
-    this.success = '';
+    this.syncView(() => {
+      this.saving = true;
+      this.error = '';
+      this.success = '';
+    });
 
     try {
       const profile = await this.profileService.updateEnabledCollections(this.auth0Id, this.selectedCollections);
-      this.selectedCollections = [...profile.enabled_collections];
-      this.success = 'Collection settings saved.';
+      this.syncView(() => {
+        this.selectedCollections = [...profile.enabled_collections];
+        this.success = 'Collection settings saved.';
+      });
     } catch (error) {
       console.error('Failed to save collection settings', error);
-      this.error = error instanceof Error ? error.message : 'Failed to save collection settings.';
+      this.syncView(() => {
+        this.error = error instanceof Error ? error.message : 'Failed to save collection settings.';
+      });
     } finally {
-      this.saving = false;
+      this.syncView(() => {
+        this.saving = false;
+      });
     }
   }
 
@@ -91,5 +107,12 @@ export class SettingsComponent {
     const current = this.profileService.current();
     const path = current?.enabled_collections?.[0] ?? 'bluray';
     void this.router.navigate(['/', path]);
+  }
+
+  private syncView(update: () => void) {
+    this.zone.run(() => {
+      update();
+      this.cdr.detectChanges();
+    });
   }
 }
