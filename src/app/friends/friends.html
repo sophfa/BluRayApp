@@ -14,6 +14,8 @@
   <div class="loading" *ngIf="loading">Loading...</div>
 
   <ng-container *ngIf="!loading">
+    <div class="error-banner" *ngIf="error">{{ error }}</div>
+
     <!-- Tabs -->
     <div class="tabs">
       <button class="tab" [class.active]="tab === 'friends'" (click)="tab = 'friends'">
