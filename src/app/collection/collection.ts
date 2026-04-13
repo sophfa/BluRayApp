@@ -6,17 +6,13 @@ import { ConfirmationService, MenuItem } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { ConfirmPopupModule } from 'primeng/confirmpopup';
 import { MenuModule } from 'primeng/menu';
-import { Movie, INITIAL_MOVIES } from '../movies.data';
+import { Movie } from '../movies.data';
 import { CollectionStorageService } from '../collection-storage.service';
 import { ProfileService } from '../profile.service';
+import { CollectionDefinition, getCollectionDefinition, normalizeEnabledCollections } from '../collection-types';
 
 type SortField = 'id' | 'title';
 type SortDir = 'asc' | 'desc';
-
-const INITIAL_DATA: Record<string, Movie[]> = {
-  'bluray-collection': INITIAL_MOVIES.map(m => ({ ...m, notes: '' })),
-  'games-collection': [],
-};
 
 @Component({
   selector: 'app-collection',
@@ -26,10 +22,7 @@ const INITIAL_DATA: Record<string, Movie[]> = {
   styleUrl: './collection.scss'
 })
 export class CollectionComponent implements OnInit {
-  public readonly collections = [
-    { path: 'bluray', label: 'Blu-ray', icon: 'pi-video' },
-    { path: 'games', label: 'Games', icon: 'pi-desktop' }
-  ];
+  public collections: Array<{ path: string; label: string; icon: string }> = [];
 
   public movies = signal<Movie[]>([]);
   public isLoaded = false;
@@ -68,11 +61,9 @@ export class CollectionComponent implements OnInit {
     const params = this.route.snapshot.params;
     this.isReadOnly = !!data['readOnly'];
     this.friendUsername = params['username'] ?? '';
-    this.activeCollectionPath = this.route.snapshot.routeConfig?.path?.split('/').pop() ?? 'bluray';
-    this.collectionKey = data['collectionKey'];
-    this.collectionTitle = data['collectionTitle'];
-    this.collectionIcon = data['collectionIcon'];
-    this.itemLabel = data['itemLabel'] ?? 'item';
+    this.activeCollectionPath = data['collectionType'] ?? params['collectionType'] ?? this.route.snapshot.routeConfig?.path?.split('/').pop() ?? 'bluray';
+    this.applyDefinition(getCollectionDefinition(this.activeCollectionPath));
+    this.setVisibleCollections([this.activeCollectionPath]);
     void this.initialize();
   }
 
@@ -82,8 +73,15 @@ export class CollectionComponent implements OnInit {
         const profile = await this.profileService.getByUsername(this.friendUsername);
         if (profile) {
           this.friendDisplayName = profile.username;
+          this.setVisibleCollections(profile.enabled_collections);
+          if (!this.isCollectionVisible(this.activeCollectionPath)) {
+            void this.router.navigate(['/friends', this.friendUsername, this.collections[0]?.path ?? 'bluray']);
+            return;
+          }
           const loaded = await this.storage.loadMoviesForUser(profile.auth0_id, this.collectionKey);
           this.movies.set(loaded);
+        } else {
+          this.loadError = 'Friend profile was not found.';
         }
       } catch (error) {
         console.warn('Failed to load friend collection', error);
@@ -92,7 +90,13 @@ export class CollectionComponent implements OnInit {
       this.isLoaded = true;
       return;
     }
-    const initial = INITIAL_DATA[this.collectionKey] ?? [];
+    const profile = this.profileService.current() ?? await this.profileService.loadForCurrentUser();
+    this.setVisibleCollections(profile?.enabled_collections);
+    if (!this.isCollectionVisible(this.activeCollectionPath)) {
+      void this.router.navigate(['/', this.collections[0]?.path ?? 'bluray']);
+      return;
+    }
+    const initial = getCollectionDefinition(this.activeCollectionPath).initialItems;
     const loaded = await this.storage.loadMovies(this.collectionKey, initial);
     const normalized = this.isGameCollection ? this.normalizeGameIds(loaded) : loaded;
     if (this.isGameCollection && this.gameIdsChanged(loaded, normalized)) {
@@ -255,6 +259,26 @@ export class CollectionComponent implements OnInit {
   }
 
   public trackById(_: number, m: Movie) { return m.id; }
+
+  private applyDefinition(definition: CollectionDefinition) {
+    this.activeCollectionPath = definition.path;
+    this.collectionKey = `${definition.type}-collection`;
+    this.collectionTitle = definition.title;
+    this.collectionIcon = definition.icon;
+    this.itemLabel = definition.itemLabel;
+  }
+
+  private setVisibleCollections(enabledCollections: unknown) {
+    const enabled = normalizeEnabledCollections(enabledCollections);
+    this.collections = enabled.map((type) => {
+      const definition = getCollectionDefinition(type);
+      return { path: definition.path, label: definition.label, icon: definition.icon };
+    });
+  }
+
+  private isCollectionVisible(path: string) {
+    return this.collections.some((collection) => collection.path === path);
+  }
 
   private buildMovieDraft(title: string): Omit<Movie, 'id'> {
     if (this.isGameCollection) {

@@ -1,5 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
+import { ProfileService } from '../profile.service';
+import { normalizeEnabledCollections } from '../collection-types';
 
 @Component({
   selector: 'app-home',
@@ -8,9 +10,12 @@ import { Router } from '@angular/router';
   styleUrl: './home.scss'
 })
 export class HomeComponent {
-  public constructor(private router: Router) {}
+  private readonly router = inject(Router);
+  private readonly profileService = inject(ProfileService);
 
-  public go(path: string) {
-    this.router.navigate([path]);
+  public async ngOnInit() {
+    const profile = this.profileService.current() ?? await this.profileService.loadForCurrentUser();
+    const nextPath = normalizeEnabledCollections(profile?.enabled_collections)[0];
+    void this.router.navigate(['/', nextPath]);
   }
 }

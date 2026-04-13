@@ -64,6 +64,11 @@ export class App {
     void this.router.navigate(['/notifications']);
   }
 
+  protected openSettings() {
+    this.closeSessionMenu();
+    void this.router.navigate(['/settings']);
+  }
+
   protected logOut() {
     this.closeSessionMenu();
     void this.auth.logout({

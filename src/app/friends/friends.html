@@ -1,6 +1,6 @@
 <div class="friends-page">
   <header class="friends-header">
-    <button class="back-btn" (click)="router.navigate(['/bluray'])" aria-label="Back">
+    <button class="back-btn" (click)="goBack()" aria-label="Back">
       <i class="pi pi-arrow-left"></i>
     </button>
     <div class="header-text">
@@ -49,7 +49,7 @@
             <i class="pi pi-comments"></i> Chat
             <span class="badge badge-alert" *ngIf="unreadForFriend(entry)">{{ unreadForFriend(entry) }}</span>
           </button>
-          <button class="action-btn" (click)="viewCollection(entry.friend.username)">
+          <button class="action-btn" (click)="viewCollection(entry.friend)">
             <i class="pi pi-eye"></i> View
           </button>
           <button

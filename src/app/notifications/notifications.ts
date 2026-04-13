@@ -9,6 +9,7 @@ import { SuggestionService, FeatureSuggestion, SuggestionStatus } from '../sugge
 import { FriendsService, Friendship } from '../friends.service';
 import { MessagesService, ChatMessage } from '../messages.service';
 import { EmailNotificationsService } from '../email-notifications.service';
+import { normalizeEnabledCollections } from '../collection-types';
 
 interface UnreadConversation {
   username: string;
@@ -153,7 +154,8 @@ export class NotificationsComponent implements OnInit {
   }
 
   public goBack() {
-    void this.router.navigate(['/bluray']);
+    const path = normalizeEnabledCollections(this.currentProfile?.enabled_collections)[0];
+    void this.router.navigate(['/', path]);
   }
 
   public get unreadMessageConversations(): UnreadConversation[] {

@@ -1,13 +1,15 @@
 import { Injectable, signal } from '@angular/core';
 import { SupabaseService } from './supabase.service';
+import { CollectionType, DEFAULT_ENABLED_COLLECTIONS, normalizeEnabledCollections } from './collection-types';
 
-export const PUBLIC_PROFILE_FIELDS = 'id,auth0_id,username,avatar_url';
+export const PUBLIC_PROFILE_FIELDS = 'id,auth0_id,username,avatar_url,enabled_collections';
 
 export interface Profile {
   id: string;
   auth0_id: string;
   username: string;
   avatar_url: string | null;
+  enabled_collections: CollectionType[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -34,7 +36,7 @@ export class ProfileService {
       console.warn('Failed to load profile by Auth0 id', error);
       return null;
     }
-    const profile = (data as Profile | null) ?? null;
+    const profile = this.normalizeProfile(data);
     if (auth0Id === await this.supabase.getCurrentUserId()) {
       this.current.set(profile);
     }
@@ -52,7 +54,7 @@ export class ProfileService {
       console.warn('Failed to load profile by username', error);
       return null;
     }
-    return (data as Profile | null) ?? null;
+    return this.normalizeProfile(data);
   }
 
   public async searchByUsername(query: string): Promise<Profile[]> {
@@ -66,22 +68,51 @@ export class ProfileService {
       console.warn('Failed to search profiles', error);
       return [];
     }
-    return (data as Profile[]) ?? [];
+    return Array.isArray(data) ? data.map((profile) => this.normalizeProfile(profile)).filter((profile): profile is Profile => profile !== null) : [];
   }
 
   public async create(auth0Id: string, username: string, avatarUrl: string | null, email: string | null): Promise<Profile> {
     const client = await this.supabase.getClient();
     if (!client) throw new Error('Supabase unavailable');
     const { data, error } = await client.from('profiles')
-      .insert({ auth0_id: auth0Id, username, avatar_url: avatarUrl })
+      .insert({ auth0_id: auth0Id, username, avatar_url: avatarUrl, enabled_collections: DEFAULT_ENABLED_COLLECTIONS })
       .select(PUBLIC_PROFILE_FIELDS)
       .single();
     if (error) {
       throw this.describeWriteError(error, 'profiles');
     }
-    const profile = data as Profile;
+    const profile = this.normalizeProfile(data);
+    if (!profile) {
+      throw new Error('Profile response was invalid.');
+    }
     this.current.set(profile);
     await this.syncContactEmail(auth0Id, email);
+    return profile;
+  }
+
+  public async updateEnabledCollections(auth0Id: string, enabledCollections: CollectionType[]): Promise<Profile> {
+    const client = await this.supabase.getClient();
+    if (!client) {
+      throw new Error('Supabase unavailable');
+    }
+
+    const normalized = normalizeEnabledCollections(enabledCollections);
+    const { data, error } = await client.from('profiles')
+      .update({ enabled_collections: normalized })
+      .eq('auth0_id', auth0Id)
+      .select(PUBLIC_PROFILE_FIELDS)
+      .single();
+
+    if (error) {
+      throw this.describeWriteError(error, 'profiles');
+    }
+
+    const profile = this.normalizeProfile(data);
+    if (!profile) {
+      throw new Error('Profile response was invalid.');
+    }
+
+    this.current.set(profile);
     return profile;
   }
 
@@ -136,6 +167,26 @@ export class ProfileService {
     }
 
     return new Error(message);
+  }
+
+  private normalizeProfile(value: unknown): Profile | null {
+    if (!value || typeof value !== 'object') {
+      return null;
+    }
+
+    const record = value as Record<string, unknown>;
+
+    if (typeof record['id'] !== 'string' || typeof record['auth0_id'] !== 'string' || typeof record['username'] !== 'string') {
+      return null;
+    }
+
+    return {
+      id: record['id'],
+      auth0_id: record['auth0_id'],
+      username: record['username'],
+      avatar_url: typeof record['avatar_url'] === 'string' ? record['avatar_url'] : null,
+      enabled_collections: normalizeEnabledCollections(record['enabled_collections'] ?? DEFAULT_ENABLED_COLLECTIONS)
+    };
   }
 
   private storageKeySegment(value: string): string {

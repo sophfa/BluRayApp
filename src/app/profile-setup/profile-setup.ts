@@ -6,6 +6,7 @@ import { AuthService } from '@auth0/auth0-angular';
 import { firstValueFrom, filter } from 'rxjs';
 import { ProfileService } from '../profile.service';
 import { SupabaseService } from '../supabase.service';
+import { normalizeEnabledCollections } from '../collection-types';
 
 const SAVE_TIMEOUT_MS = 15000;
 
@@ -73,12 +74,12 @@ export class ProfileSetupComponent implements OnInit {
         );
       }
 
-      await this.withTimeout(
+      const profile = await this.withTimeout(
         this.profileService.create(auth0Id, this.username.trim(), avatarUrl, this.auth0Email),
         'Profile save'
       );
 
-      this.router.navigate(['/bluray']);
+      this.router.navigate(['/', normalizeEnabledCollections(profile.enabled_collections)[0]]);
     } catch (e: unknown) {
       console.error('Profile setup save failed', e);
       this.error = this.describeSaveError(e);

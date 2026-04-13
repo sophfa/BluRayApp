@@ -87,11 +87,17 @@ create table if not exists public.profiles (
   username text not null unique,
   avatar_url text,
   email text,
+  enabled_collections text[] not null default array['bluray', 'games']::text[],
   created_at timestamptz not null default timezone('utc', now())
 );
 
 alter table public.profiles
-  add column if not exists email text;
+  add column if not exists email text,
+  add column if not exists enabled_collections text[] not null default array['bluray', 'games']::text[];
+
+update public.profiles
+set enabled_collections = array['bluray', 'games']::text[]
+where enabled_collections is null or array_length(enabled_collections, 1) is null;
 
 alter table public.profiles enable row level security;
 
@@ -212,6 +218,8 @@ using (
 ```
 
 The app keeps `profiles.email` in sync from Auth0 after sign-in so friend/chat/suggestion emails can be delivered without exposing email addresses to other users.
+It also stores `profiles.enabled_collections` so each user can decide which collection types appear in their account settings and navigation.
+Available collection types are `bluray`, `games`, `books`, and `music`.
 
 ### 5. Let accepted friends read each other's collections
 

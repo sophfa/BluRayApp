@@ -8,6 +8,7 @@ import { ProfileService, Profile } from '../profile.service';
 import { FriendsService, FriendEntry, Friendship } from '../friends.service';
 import { ChatMessage, MessagesService } from '../messages.service';
 import { EmailNotificationsService } from '../email-notifications.service';
+import { normalizeEnabledCollections } from '../collection-types';
 
 type Tab = 'friends' | 'requests' | 'find' | 'chat';
 
@@ -255,8 +256,14 @@ export class FriendsComponent implements OnInit {
     }
   }
 
-  public viewCollection(username: string) {
-    void this.router.navigate(['/friends', username, 'bluray']);
+  public viewCollection(profile: Profile) {
+    const collectionPath = normalizeEnabledCollections(profile.enabled_collections)[0];
+    void this.router.navigate(['/friends', profile.username, collectionPath]);
+  }
+
+  public goBack() {
+    const collectionPath = normalizeEnabledCollections(this.currentProfile?.enabled_collections)[0];
+    void this.router.navigate(['/', collectionPath]);
   }
 
   public async openChat(entry: FriendEntry) {

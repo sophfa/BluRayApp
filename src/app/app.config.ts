@@ -5,14 +5,29 @@ import { provideAuth0, AuthGuard } from '@auth0/auth0-angular';
 import Aura from '@primeuix/themes/aura';
 import { ConfirmationService } from 'primeng/api';
 import { providePrimeNG } from 'primeng/config';
-import { INITIAL_MOVIES } from './movies.data';
 import { CollectionComponent } from './collection/collection';
 import { ProfileSetupComponent } from './profile-setup/profile-setup';
 import { FriendsComponent } from './friends/friends';
 import { NotificationsComponent } from './notifications/notifications';
 import { ProfileGuard } from './guards/profile.guard';
+import { HomeComponent } from './home/home';
+import { SettingsComponent } from './settings/settings';
+import { COLLECTION_DEFINITIONS } from './collection-types';
 
 const collectionGuards = [AuthGuard, ProfileGuard];
+const ownCollectionRoutes = COLLECTION_DEFINITIONS.map((definition) => ({
+  path: definition.path,
+  component: CollectionComponent,
+  canActivate: collectionGuards,
+  data: { collectionType: definition.type }
+}));
+
+const friendCollectionRoutes = COLLECTION_DEFINITIONS.map((definition) => ({
+  path: `friends/:username/${definition.path}`,
+  component: CollectionComponent,
+  canActivate: collectionGuards,
+  data: { collectionType: definition.type, readOnly: true }
+}));
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -29,41 +44,18 @@ export const appConfig: ApplicationConfig = {
       theme: { preset: Aura, options: { darkModeSelector: '.app-dark', cssLayer: false } }
     }),
     provideRouter([
-      { path: '', pathMatch: 'full', redirectTo: 'bluray' },
+      { path: '', pathMatch: 'full', component: HomeComponent, canActivate: collectionGuards },
 
       { path: 'profile-setup', component: ProfileSetupComponent, canActivate: [AuthGuard] },
       { path: 'notifications', component: NotificationsComponent, canActivate: collectionGuards },
+      { path: 'settings', component: SettingsComponent, canActivate: collectionGuards },
 
       { path: 'friends', component: FriendsComponent, canActivate: collectionGuards },
 
-      {
-        path: 'bluray',
-        component: CollectionComponent,
-        canActivate: collectionGuards,
-        data: { collectionKey: 'bluray-collection', collectionTitle: 'Blu-ray Collection', collectionIcon: 'pi-video', itemLabel: 'movie', initialItems: INITIAL_MOVIES }
-      },
-      {
-        path: 'games',
-        component: CollectionComponent,
-        canActivate: collectionGuards,
-        data: { collectionKey: 'games-collection', collectionTitle: 'Games Collection', collectionIcon: 'pi-desktop', itemLabel: 'game', initialItems: [] }
-      },
+      ...ownCollectionRoutes,
+      ...friendCollectionRoutes,
 
-      // Friend collection views (read-only)
-      {
-        path: 'friends/:username/bluray',
-        component: CollectionComponent,
-        canActivate: collectionGuards,
-        data: { collectionKey: 'bluray-collection', collectionTitle: 'Blu-ray Collection', collectionIcon: 'pi-video', itemLabel: 'movie', readOnly: true }
-      },
-      {
-        path: 'friends/:username/games',
-        component: CollectionComponent,
-        canActivate: collectionGuards,
-        data: { collectionKey: 'games-collection', collectionTitle: 'Games Collection', collectionIcon: 'pi-desktop', itemLabel: 'game', readOnly: true }
-      },
-
-      { path: '**', redirectTo: 'bluray' }
+      { path: '**', redirectTo: '' }
     ], withComponentInputBinding())
   ]
 };

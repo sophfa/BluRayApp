@@ -1,0 +1,62 @@
+<div class="settings-page">
+  <header class="settings-header">
+    <button class="back-btn" type="button" (click)="goBack()" aria-label="Back">
+      <i class="pi pi-arrow-left"></i>
+    </button>
+    <div>
+      <p class="eyebrow">Settings</p>
+      <h1>Collection Types</h1>
+      <p class="subcopy">
+        Choose which collections appear in your account. You can enable any mix of Blu-ray, Games, Books, and Music / CDs.
+      </p>
+    </div>
+  </header>
+
+  <div class="loading" *ngIf="loading">Loading settings...</div>
+
+  <ng-container *ngIf="!loading">
+    <div class="error-banner" *ngIf="error">{{ error }}</div>
+    <div class="success-banner" *ngIf="success">{{ success }}</div>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">Visible Collections</p>
+          <h2>Enable the collection types you want to use</h2>
+        </div>
+        <span class="selection-count">{{ selectedCollections.length }} selected</span>
+      </div>
+
+      <div class="collection-grid">
+        <label class="collection-card" *ngFor="let collection of collectionOptions">
+          <div class="collection-card__top">
+            <div class="collection-card__icon">
+              <i class="pi {{ collection.icon }}"></i>
+            </div>
+            <input
+              type="checkbox"
+              [checked]="isEnabled(collection.type)"
+              [disabled]="selectedCollections.length === 1 && isEnabled(collection.type)"
+              (change)="toggleCollection(collection.type, $any($event.target).checked)"
+            />
+          </div>
+          <strong>{{ collection.label }}</strong>
+          <p>{{ collection.description }}</p>
+        </label>
+      </div>
+
+      <p class="field-hint">At least one collection type must stay enabled.</p>
+
+      <div class="actions">
+        <button
+          type="button"
+          class="primary-btn"
+          [disabled]="saving || selectedCollections.length === 0"
+          (click)="save()"
+        >
+          {{ saving ? 'Saving...' : 'Save settings' }}
+        </button>
+      </div>
+    </section>
+  </ng-container>
+</div>
