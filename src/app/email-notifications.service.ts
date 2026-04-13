@@ -23,6 +23,12 @@ type NotificationEmailPayload =
       actionUrl: string;
     }
   | {
+      type: 'friend_request_declined';
+      requesterProfileId: string;
+      recipientProfileId: string;
+      actionUrl: string;
+    }
+  | {
       type: 'chat_message_received';
       friendshipId: string;
       recipientProfileId: string;
@@ -62,6 +68,19 @@ export class EmailNotificationsService {
     await this.invoke({
       type: 'friend_request_accepted',
       friendshipId,
+      actionUrl
+    });
+  }
+
+  public async notifyFriendRequestDeclined(
+    requesterProfileId: string,
+    recipientProfileId: string,
+    actionUrl: string
+  ): Promise<void> {
+    await this.invoke({
+      type: 'friend_request_declined',
+      requesterProfileId,
+      recipientProfileId,
       actionUrl
     });
   }

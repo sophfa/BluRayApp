@@ -22,6 +22,12 @@ type NotificationEmailPayload =
       actionUrl: string;
     }
   | {
+      type: 'friend_request_declined';
+      requesterProfileId: string;
+      recipientProfileId: string;
+      actionUrl: string;
+    }
+  | {
       type: 'chat_message_received';
       friendshipId: string;
       recipientProfileId: string;
@@ -126,6 +132,10 @@ async function routeNotification(payload: NotificationEmailPayload, actor: Actor
 
     case 'friend_request_accepted':
       await sendFriendAcceptedEmail(payload, actor);
+      return;
+
+    case 'friend_request_declined':
+      await sendFriendDeclinedEmail(payload, actor);
       return;
 
     case 'chat_message_received':
@@ -292,6 +302,51 @@ async function sendFriendAcceptedEmail(
   });
 }
 
+async function sendFriendDeclinedEmail(
+  payload: Extract<NotificationEmailPayload, { type: 'friend_request_declined' }>,
+  actor: ActorProfile
+) {
+  if (actor.id !== payload.recipientProfileId) {
+    throw new Error('Friend decline email is not authorized.');
+  }
+
+  const [requester, recipient] = await Promise.all([
+    loadProfileById(payload.requesterProfileId),
+    loadProfileById(payload.recipientProfileId)
+  ]);
+
+  if (!requester || !recipient) {
+    throw new Error('Friend decline email profiles were not found.');
+  }
+
+  if (!requester.email) {
+    console.warn('Skipping friend declined email because requester email is missing.');
+    return;
+  }
+
+  await sendEmail({
+    to: [requester.email],
+    subject: `${recipient.username} declined your friend request`,
+    html: buildEmailLayout({
+      eyebrow: 'Friend Request Update',
+      title: `${recipient.username} declined your request`,
+      intro: 'Your request was not accepted this time.',
+      accent: '#dc2626',
+      accentSoft: '#fef2f2',
+      badge: 'Request declined',
+      buttonLabel: 'Open friends',
+      actionUrl: payload.actionUrl,
+      sections: [
+        renderDetailList([
+          ['Requested user', recipient.username],
+          ['Outcome', 'Declined']
+        ])
+      ]
+    }),
+    text: `${recipient.username} declined your friend request.\n\nOpen friends: ${payload.actionUrl}`
+  });
+}
+
 async function sendChatMessageEmail(
   payload: Extract<NotificationEmailPayload, { type: 'chat_message_received' }>,
   actor: ActorProfile
@@ -388,6 +443,19 @@ async function loadProfileByAuth0Id(auth0Id: string): Promise<ProfileRow | null>
   const { data, error } = await getServiceClient().from('profiles')
     .select('id, auth0_id, username, email')
     .eq('auth0_id', auth0Id)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message ?? 'Failed to load profile.');
+  }
+
+  return (data as ProfileRow | null) ?? null;
+}
+
+async function loadProfileById(id: string): Promise<ProfileRow | null> {
+  const { data, error } = await getServiceClient().from('profiles')
+    .select('id, auth0_id, username, email')
+    .eq('id', id)
     .maybeSingle();
 
   if (error) {

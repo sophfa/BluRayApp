@@ -195,6 +195,10 @@ export class FriendsComponent implements OnInit {
   }
 
   public async decline(friendship: Friendship) {
+    const shouldNotifyDecline = !!this.currentProfile
+      && friendship.status === 'pending'
+      && friendship.recipient_id === this.currentProfile.id;
+
     this.syncView(() => {
       this.actionInProgress[friendship.id] = true;
       this.error = '';
@@ -202,6 +206,13 @@ export class FriendsComponent implements OnInit {
 
     try {
       await this.friendsService.declineOrRemove(friendship.id);
+      if (shouldNotifyDecline) {
+        void this.emailNotifications.notifyFriendRequestDeclined(
+          friendship.requester_id,
+          friendship.recipient_id,
+          this.friendsHomeUrl()
+        );
+      }
       await this.loadAll();
     } catch (error) {
       console.error('Failed to decline friend request', error);
