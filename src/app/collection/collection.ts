@@ -262,7 +262,10 @@ export class CollectionComponent implements OnInit {
   public openMovieMenu(movie: Movie, menu: { toggle(e: Event): void }, event: Event) {
     event.stopPropagation();
     const items: MenuItem[] = this.isGameCollection
-      ? [{ label: 'Edit game', icon: 'pi pi-pencil', command: () => this.openEdit(movie) }]
+      ? [
+          { label: 'Edit game', icon: 'pi pi-pencil', command: () => this.openEdit(movie) },
+          { label: 'Move to top', icon: 'pi pi-arrow-up', command: () => this.moveToTop(movie) },
+        ]
       : [{ label: 'Edit movie', icon: 'pi pi-pencil', command: () => this.openEdit(movie) }];
     items.push(
       { separator: true },
@@ -363,6 +366,13 @@ export class CollectionComponent implements OnInit {
   }
 
   // ── Drag to reorder (games) ────────────────────────────────
+  public moveToTop(movie: Movie) {
+    const list = this.movies().filter(m => m.id !== movie.id);
+    list.unshift({ ...movie });
+    this.movies.set(this.normalizeGameIds(list));
+    this.save();
+  }
+
   public onDragStart(event: DragEvent, filteredIndex: number) {
     this.draggingIndex = filteredIndex;
     if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';

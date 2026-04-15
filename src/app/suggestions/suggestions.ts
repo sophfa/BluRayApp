@@ -134,14 +134,21 @@ export class SuggestionsComponent implements OnInit {
   private async refresh() {
     if (!this.auth0Id) return;
 
-    const [own, admin] = await Promise.all([
-      this.suggestionService.listOwn(this.auth0Id),
-      this.isAdmin ? this.suggestionService.listAdminInbox() : Promise.resolve([])
-    ]);
+    const ownResult = await this.suggestionService.listOwn(this.auth0Id).catch(() => [] as FeatureSuggestion[]);
+
+    let adminResult: FeatureSuggestion[] = [];
+    if (this.isAdmin) {
+      try {
+        adminResult = await this.suggestionService.listAdminInbox();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.syncView(() => { this.error = `Admin inbox error: ${msg}`; });
+      }
+    }
 
     this.syncView(() => {
-      this.ownSuggestions = own;
-      this.adminSuggestions = admin;
+      this.ownSuggestions = ownResult;
+      this.adminSuggestions = adminResult;
     });
   }
 

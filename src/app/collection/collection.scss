@@ -487,8 +487,9 @@
 .modal-backdrop {
   position: fixed; inset: 0;
   background: rgba(0,0,0,0.7);
-  display: flex; align-items: center; justify-content: center;
+  display: flex; align-items: flex-start; justify-content: center;
   z-index: 100; padding: 16px;
+  overflow-y: auto;
 }
 
 .modal {
@@ -498,6 +499,8 @@
   padding: 28px;
   width: 100%;
   max-width: 420px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
 
   h2 { font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 20px; }
 }
@@ -589,10 +592,34 @@
 
 // ── Platinumed row ────────────────────────────────────────
 .movie-row.is-platinumed {
-  background: linear-gradient(90deg, rgba(124, 58, 237, 0.08) 0%, transparent 60%);
-  border-left: 2px solid #7c3aed;
+  position: relative;
+  background: linear-gradient(90deg, rgba(124, 58, 237, 0.12) 0%, rgba(124, 58, 237, 0.03) 55%, transparent 100%);
+  border-left: 3px solid #7c3aed;
   padding-left: 10px;
-  &:hover { background: linear-gradient(90deg, rgba(124, 58, 237, 0.15) 0%, #1a1a24 60%); }
+
+  .movie-num {
+    color: #a78bfa;
+  }
+
+  .movie-title > span {
+    color: #e9d5ff;
+  }
+
+  &::after {
+    content: '✦';
+    position: absolute;
+    right: 38px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.65rem;
+    color: #7c3aed;
+    opacity: 0.6;
+    pointer-events: none;
+  }
+
+  &:hover {
+    background: linear-gradient(90deg, rgba(124, 58, 237, 0.2) 0%, rgba(124, 58, 237, 0.06) 55%, #1a1a24 100%);
+  }
 }
 
 // ── Drag to reorder ───────────────────────────────────────

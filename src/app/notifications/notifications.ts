@@ -227,12 +227,21 @@ export class NotificationsComponent implements OnInit {
       return;
     }
 
-    const [ownSuggestions, pendingRequests, unreadMessages, adminSuggestions] = await Promise.all([
+    const [ownSuggestions, pendingRequests, unreadMessages] = await Promise.all([
       this.suggestionService.listOwn(this.auth0Id),
       this.friendsService.getPendingReceived(this.currentProfile.id),
       this.messagesService.getUnreadIncoming(this.currentProfile.id),
-      this.isAdmin ? this.suggestionService.listAdminInbox() : Promise.resolve([])
     ]);
+
+    let adminSuggestions: FeatureSuggestion[] = [];
+    if (this.isAdmin) {
+      try {
+        adminSuggestions = await this.suggestionService.listAdminInbox();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.syncView(() => { this.error = `Admin inbox error: ${msg}`; });
+      }
+    }
 
     this.syncView(() => {
       this.ownSuggestions = ownSuggestions;

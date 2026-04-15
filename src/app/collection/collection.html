@@ -133,7 +133,7 @@
             <div class="movie-title">
               <span>{{ movie.title }}</span>
             </div>
-            <div class="movie-tags" *ngIf="(movie.tags?.length ?? 0) > 0 || movie.platinumed || movie.platform || movie.format">
+            <div class="movie-tags" *ngIf="(movie.tags?.length ?? 0) > 0 || movie.platform || movie.format">
               <span
                 *ngFor="let tag of movie.tags ?? []; let tagIndex = index"
                 class="tag"
@@ -142,7 +142,6 @@
                 [style.color]="getTagColor(tag)?.text ?? null"
                 [style.border-color]="getTagColor(tag)?.border ?? null"
               >{{ tag }}</span>
-              <span class="tag tag-plat" *ngIf="movie.platinumed">Plat</span>
               <span class="tag tag-platform" *ngIf="movie.platform">{{ movie.platform }}</span>
               <span class="tag tag-disc" *ngIf="movie.format === 'disc'">Disc</span>
               <span class="tag tag-digital" *ngIf="movie.format === 'digital'">Digital</span>

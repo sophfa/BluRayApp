@@ -47,8 +47,7 @@ export class SuggestionService {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.warn('Failed to load admin suggestion inbox', error);
-      return [];
+      throw new Error(error.message ?? 'Failed to load admin suggestion inbox');
     }
 
     return (data ?? []) as FeatureSuggestion[];
