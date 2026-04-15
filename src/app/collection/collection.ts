@@ -10,6 +10,7 @@ import { Movie } from '../movies.data';
 import { CollectionStorageService } from '../collection-storage.service';
 import { ProfileService } from '../profile.service';
 import { CollectionDefinition, getCollectionDefinition, normalizeEnabledCollections } from '../collection-types';
+import { TagColorService, TagColor } from '../tag-color.service';
 
 type SortField = 'id' | 'title';
 type SortDir = 'asc' | 'desc';
@@ -32,6 +33,7 @@ export class CollectionComponent implements OnInit {
   public collectionTitle = '';
   public collectionIcon = '';
   public itemLabel = 'item';
+  public isWishlist = false;
 
   public searchQuery = '';
   public sortField: SortField = 'id';
@@ -50,19 +52,36 @@ export class CollectionComponent implements OnInit {
   public friendDisplayName = '';
   public loadError = '';
 
+  // hide (temporary mass-edit helper)
+  public hiddenIds = new Set<number>();
+
+  // drag-to-reorder (games only)
+  public draggingIndex: number | null = null;
+  public dragOverIndex: number | null = null;
+
+  // tag color picker
+  public colorPickerTag: string | null = null;
+  public tagColors: Record<string, TagColor> = {};
+
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly storage = inject(CollectionStorageService);
   private readonly profileService = inject(ProfileService);
   private readonly confirmationService = inject(ConfirmationService);
+  private readonly tagColorService = inject(TagColorService);
+
+  public get tagColorPresets(): TagColor[] {
+    return this.tagColorService.presets;
+  }
 
   public ngOnInit() {
     const data = this.route.snapshot.data;
     const params = this.route.snapshot.params;
     this.isReadOnly = !!data['readOnly'];
+    this.isWishlist = !!data['isWishlist'];
     this.friendUsername = params['username'] ?? '';
     this.activeCollectionPath = data['collectionType'] ?? params['collectionType'] ?? this.route.snapshot.routeConfig?.path?.split('/').pop() ?? 'bluray';
-    this.applyDefinition(getCollectionDefinition(this.activeCollectionPath));
+    this.applyDefinition(getCollectionDefinition(this.activeCollectionPath), this.isWishlist);
     this.setVisibleCollections([this.activeCollectionPath]);
     void this.initialize();
   }
@@ -96,7 +115,7 @@ export class CollectionComponent implements OnInit {
       void this.router.navigate(['/', this.collections[0]?.path ?? 'bluray']);
       return;
     }
-    const initial = getCollectionDefinition(this.activeCollectionPath).initialItems;
+    const initial = this.isWishlist ? [] : getCollectionDefinition(this.activeCollectionPath).initialItems;
     const loaded = await this.storage.loadMovies(this.collectionKey, initial);
     const normalized = this.isGameCollection ? this.normalizeGameIds(loaded) : loaded;
     if (this.isGameCollection && this.gameIdsChanged(loaded, normalized)) {
@@ -104,6 +123,7 @@ export class CollectionComponent implements OnInit {
     }
     this.movies.set(normalized);
     this.isLoaded = true;
+    this.loadTagColors();
   }
 
   private save() {
@@ -111,13 +131,13 @@ export class CollectionComponent implements OnInit {
   }
 
   public get filtered(): Movie[] {
-    let list = this.movies();
+    let list = this.movies().filter(m => !this.hiddenIds.has(m.id));
     const q = this.searchQuery.trim().toLowerCase();
     if (q) {
       list = list.filter(m =>
         m.title.toLowerCase().includes(q) ||
         String(m.id).includes(q) ||
-        (!this.isGameCollection && (m.tags ?? []).some(tag => tag.toLowerCase().includes(q)))
+        (m.tags ?? []).some(tag => tag.toLowerCase().includes(q))
       );
     }
     return [...list].sort((a, b) => {
@@ -127,19 +147,40 @@ export class CollectionComponent implements OnInit {
   }
 
   public get totalCount() { return this.movies().length; }
+  public get hiddenCount() { return this.hiddenIds.size; }
+
+  public hideMovie(id: number) {
+    this.hiddenIds = new Set(this.hiddenIds).add(id);
+  }
+
+  public unhideAll() {
+    this.hiddenIds = new Set();
+  }
   public get isGameCollection() { return this.itemLabel === 'game'; }
   public get primarySortField(): SortField { return 'id'; }
   public get primarySortLabel() { return this.isGameCollection ? 'Order' : '#'; }
   public get searchPlaceholder() {
-    return this.isGameCollection ? 'Search by title or number...' : 'Search by title, number, or tag...';
+    return 'Search by title, number, or tag...';
   }
 
+  // ── Wishlist ──────────────────────────────────────────────
+  public toggleWishlist() {
+    if (this.isWishlist) {
+      void this.router.navigate(['/', this.activeCollectionPath]);
+    } else {
+      void this.router.navigate(['/', this.activeCollectionPath + '-wishlist']);
+    }
+  }
+
+  // ── Navigation ────────────────────────────────────────────
   public goToFriends() {
     void this.router.navigate(['/friends']);
   }
 
   public switchCollection(path: string) {
-    if (!path || path === this.activeCollectionPath) return;
+    if (!path) return;
+    // Allow re-clicking the active base tab to exit wishlist mode
+    if (path === this.activeCollectionPath && !this.isWishlist) return;
     if (this.isReadOnly && this.friendUsername) {
       void this.router.navigate(['/friends', this.friendUsername, path]);
     } else {
@@ -147,6 +188,7 @@ export class CollectionComponent implements OnInit {
     }
   }
 
+  // ── Sort ──────────────────────────────────────────────────
   public setSort(field: SortField) {
     if (this.sortField === field) {
       this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
@@ -156,6 +198,7 @@ export class CollectionComponent implements OnInit {
     }
   }
 
+  // ── Modal ─────────────────────────────────────────────────
   public openAdd() {
     const maxId = Math.max(...this.movies().map(m => m.id), 0);
     this.modalMovie = {
@@ -170,6 +213,7 @@ export class CollectionComponent implements OnInit {
     this.modalTags = '';
     this.editingMovieId = null;
     this.isEditing = false;
+    this.colorPickerTag = null;
     this.showModal = true;
   }
 
@@ -187,16 +231,14 @@ export class CollectionComponent implements OnInit {
       ));
     } else {
       this.movies.update(list => {
-        const nextMovie: Movie = {
-          id: this.modalMovie.id!,
-          ...draft,
-        };
+        const nextMovie: Movie = { id: this.modalMovie.id!, ...draft };
         return [...list, nextMovie];
       });
     }
     this.save();
     this.modalTags = '';
     this.editingMovieId = null;
+    this.colorPickerTag = null;
     this.showModal = false;
   }
 
@@ -213,18 +255,15 @@ export class CollectionComponent implements OnInit {
     this.modalTags = (movie.tags ?? []).join(', ');
     this.editingMovieId = movie.id;
     this.isEditing = true;
+    this.colorPickerTag = null;
     this.showModal = true;
   }
 
   public openMovieMenu(movie: Movie, menu: { toggle(e: Event): void }, event: Event) {
     event.stopPropagation();
     const items: MenuItem[] = this.isGameCollection
-      ? [
-          { label: 'Edit game', icon: 'pi pi-pencil', command: () => this.openEdit(movie) },
-        ]
-      : [
-          { label: 'Edit movie', icon: 'pi pi-pencil', command: () => this.openEdit(movie) },
-        ];
+      ? [{ label: 'Edit game', icon: 'pi pi-pencil', command: () => this.openEdit(movie) }]
+      : [{ label: 'Edit movie', icon: 'pi pi-pencil', command: () => this.openEdit(movie) }];
     items.push(
       { separator: true },
       {
@@ -260,11 +299,122 @@ export class CollectionComponent implements OnInit {
 
   public trackById(_: number, m: Movie) { return m.id; }
 
-  private applyDefinition(definition: CollectionDefinition) {
+  // ── Tag autocomplete ───────────────────────────────────────
+  public get allExistingTags(): string[] {
+    const seen = new Set<string>();
+    const tags: string[] = [];
+    for (const movie of this.movies()) {
+      for (const tag of movie.tags ?? []) {
+        const lower = tag.toLowerCase();
+        if (!seen.has(lower)) { seen.add(lower); tags.push(tag); }
+      }
+    }
+    return tags.sort((a, b) => a.localeCompare(b));
+  }
+
+  public get parsedModalTags(): string[] {
+    return this.parseTags(this.modalTags);
+  }
+
+  public get tagAutocompleteSuggestions(): string[] {
+    const parts = this.modalTags.split(',');
+    const partial = parts[parts.length - 1].trim().toLowerCase();
+    if (!partial) return [];
+    const current = new Set(this.parsedModalTags.map(t => t.toLowerCase()));
+    return this.allExistingTags
+      .filter(t => t.toLowerCase().startsWith(partial) && !current.has(t.toLowerCase()) && t.toLowerCase() !== partial)
+      .slice(0, 8);
+  }
+
+  public selectTagSuggestion(tag: string) {
+    const parts = this.modalTags.split(',');
+    parts[parts.length - 1] = tag;
+    this.modalTags = parts.join(',').replace(/^\s*,\s*/, '') + ', ';
+  }
+
+  // ── Tag colors ─────────────────────────────────────────────
+  public loadTagColors() {
+    this.tagColors = this.tagColorService.getAll(this.baseCollectionKey);
+  }
+
+  public getTagColor(tag: string): TagColor | null {
+    return this.tagColors[tag.toLowerCase()] ?? null;
+  }
+
+  public openColorPicker(tag: string, event: Event) {
+    event.stopPropagation();
+    this.colorPickerTag = this.colorPickerTag === tag ? null : tag;
+  }
+
+  public setTagColor(tag: string, color: TagColor) {
+    this.tagColorService.set(this.baseCollectionKey, tag, color);
+    this.loadTagColors();
+    this.colorPickerTag = null;
+  }
+
+  public clearTagColor(tag: string) {
+    this.tagColorService.set(this.baseCollectionKey, tag, null);
+    this.loadTagColors();
+    this.colorPickerTag = null;
+  }
+
+  public closeColorPicker() {
+    this.colorPickerTag = null;
+  }
+
+  // ── Drag to reorder (games) ────────────────────────────────
+  public onDragStart(event: DragEvent, filteredIndex: number) {
+    this.draggingIndex = filteredIndex;
+    if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+  }
+
+  public onDragOver(event: DragEvent, filteredIndex: number) {
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+    this.dragOverIndex = filteredIndex;
+  }
+
+  public onDrop(event: DragEvent, toIndex: number) {
+    event.preventDefault();
+    if (this.draggingIndex === null || this.draggingIndex === toIndex) {
+      this.draggingIndex = null;
+      this.dragOverIndex = null;
+      return;
+    }
+    const filtered = this.filtered;
+    const fromMovie = filtered[this.draggingIndex];
+    const toMovie = filtered[toIndex];
+    if (!fromMovie || !toMovie) { this.draggingIndex = null; this.dragOverIndex = null; return; }
+    const list = [...this.movies()];
+    const fromIdx = list.findIndex(m => m.id === fromMovie.id);
+    const toIdx = list.findIndex(m => m.id === toMovie.id);
+    if (fromIdx === -1 || toIdx === -1) { this.draggingIndex = null; this.dragOverIndex = null; return; }
+    const [item] = list.splice(fromIdx, 1);
+    list.splice(toIdx, 0, item);
+    this.movies.set(this.normalizeGameIds(list));
+    this.save();
+    this.draggingIndex = null;
+    this.dragOverIndex = null;
+  }
+
+  public onDragEnd() {
+    this.draggingIndex = null;
+    this.dragOverIndex = null;
+  }
+
+  // ── Private helpers ────────────────────────────────────────
+  private get baseCollectionKey(): string {
+    // Share tag colors between a collection and its wishlist
+    return this.isWishlist
+      ? this.collectionKey.replace(/-wishlist$/, '-collection')
+      : this.collectionKey;
+  }
+
+  private applyDefinition(definition: CollectionDefinition, isWishlist = false) {
     this.activeCollectionPath = definition.path;
-    this.collectionKey = `${definition.type}-collection`;
-    this.collectionTitle = definition.title;
-    this.collectionIcon = definition.icon;
+    this.collectionKey = isWishlist ? `${definition.type}-wishlist` : `${definition.type}-collection`;
+    this.collectionTitle = isWishlist ? `${definition.title} — Wishlist` : definition.title;
+    this.collectionIcon = isWishlist ? 'pi-heart' : definition.icon;
     this.itemLabel = definition.itemLabel;
   }
 
@@ -288,6 +438,7 @@ export class CollectionComponent implements OnInit {
         platform: this.normalizeText(this.modalMovie.platform),
         format: this.normalizeFormat(this.modalMovie.format),
         platinumed: !!this.modalMovie.platinumed,
+        tags: this.parseTags(this.modalTags),
       };
     }
 
@@ -307,23 +458,16 @@ export class CollectionComponent implements OnInit {
   }
 
   private parseTags(value: unknown) {
-    if (typeof value !== 'string') {
-      return [];
-    }
-
+    if (typeof value !== 'string') return [];
     const seen = new Set<string>();
     const tags: string[] = [];
-
     for (const rawTag of value.split(',')) {
       const tag = rawTag.trim();
       const key = tag.toLowerCase();
-      if (!tag || seen.has(key)) {
-        continue;
-      }
+      if (!tag || seen.has(key)) continue;
       seen.add(key);
       tags.push(tag);
     }
-
     return tags;
   }
 
@@ -332,10 +476,7 @@ export class CollectionComponent implements OnInit {
 
     if (this.isEditing && this.editingMovieId !== null) {
       const currentMovie = list.find(movie => movie.id === this.editingMovieId);
-      if (!currentMovie) {
-        return list;
-      }
-
+      if (!currentMovie) return list;
       const next = list.filter(movie => movie.id !== this.editingMovieId);
       next.splice(targetPosition - 1, 0, { ...currentMovie, ...draft, id: targetPosition });
       return this.normalizeGameIds(next);
@@ -348,10 +489,7 @@ export class CollectionComponent implements OnInit {
 
   private normalizeGamePosition(value: unknown, maxPosition: number) {
     const numeric = typeof value === 'number' ? value : Number(value);
-    if (!Number.isFinite(numeric)) {
-      return maxPosition;
-    }
-
+    if (!Number.isFinite(numeric)) return maxPosition;
     return Math.min(Math.max(Math.round(numeric), 1), maxPosition);
   }
 

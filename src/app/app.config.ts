@@ -9,6 +9,7 @@ import { CollectionComponent } from './collection/collection';
 import { ProfileSetupComponent } from './profile-setup/profile-setup';
 import { FriendsComponent } from './friends/friends';
 import { NotificationsComponent } from './notifications/notifications';
+import { SuggestionsComponent } from './suggestions/suggestions';
 import { ProfileGuard } from './guards/profile.guard';
 import { HomeComponent } from './home/home';
 import { SettingsComponent } from './settings/settings';
@@ -20,6 +21,13 @@ const ownCollectionRoutes = COLLECTION_DEFINITIONS.map((definition) => ({
   component: CollectionComponent,
   canActivate: collectionGuards,
   data: { collectionType: definition.type }
+}));
+
+const wishlistRoutes = COLLECTION_DEFINITIONS.map((definition) => ({
+  path: `${definition.path}-wishlist`,
+  component: CollectionComponent,
+  canActivate: collectionGuards,
+  data: { collectionType: definition.type, isWishlist: true }
 }));
 
 const friendCollectionRoutes = COLLECTION_DEFINITIONS.map((definition) => ({
@@ -51,8 +59,10 @@ export const appConfig: ApplicationConfig = {
       { path: 'settings', component: SettingsComponent, canActivate: collectionGuards },
 
       { path: 'friends', component: FriendsComponent, canActivate: collectionGuards },
+      { path: 'suggestions', component: SuggestionsComponent, canActivate: collectionGuards },
 
       ...ownCollectionRoutes,
+      ...wishlistRoutes,
       ...friendCollectionRoutes,
 
       { path: '**', redirectTo: '' }

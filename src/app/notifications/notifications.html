@@ -49,18 +49,22 @@
           <input
             type="text"
             [(ngModel)]="suggestionTitle"
+            minlength="3"
             maxlength="120"
             placeholder="e.g. Add wishlist support"
           />
+          <small class="field-help">Minimum 3 characters. Current: {{ suggestionTitleLength }}</small>
         </label>
         <label class="field">
           <span>Details</span>
           <textarea
             rows="5"
             [(ngModel)]="suggestionBody"
+            minlength="10"
             maxlength="2000"
             placeholder="What would make the site better?"
           ></textarea>
+          <small class="field-help">Minimum 10 characters. Current: {{ suggestionBodyLength }}</small>
         </label>
       </div>
 
@@ -68,7 +72,7 @@
         <button
           type="button"
           class="primary-btn"
-          [disabled]="savingSuggestion || !suggestionTitle.trim() || !suggestionBody.trim()"
+          [disabled]="savingSuggestion || !canSubmitSuggestion"
           (click)="submitSuggestion()"
         >
           {{ savingSuggestion ? 'Sending...' : 'Send Suggestion' }}

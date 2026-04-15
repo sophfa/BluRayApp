@@ -69,6 +69,11 @@ export class App {
     void this.router.navigate(['/settings']);
   }
 
+  protected openSuggestions() {
+    this.closeSessionMenu();
+    void this.router.navigate(['/suggestions']);
+  }
+
   protected logOut() {
     this.closeSessionMenu();
     void this.auth.logout({

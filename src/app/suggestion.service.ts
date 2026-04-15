@@ -101,6 +101,22 @@ export class SuggestionService {
       return new Error('Supabase feature_suggestions table is missing.');
     }
 
+    if (lower.includes('char_length(trim(title))')) {
+      return new Error('Suggestion titles must be at least 3 characters.');
+    }
+
+    if (lower.includes('char_length(trim(body))')) {
+      return new Error('Suggestion details must be at least 10 characters.');
+    }
+
+    if (error.code === '23514') {
+      return new Error('Suggestion details did not meet the database validation rules.');
+    }
+
+    if (lower.includes('row-level security') || lower.includes('violates row-level security')) {
+      return new Error('Your profile does not have permission to submit suggestions yet.');
+    }
+
     return new Error(message);
   }
 }

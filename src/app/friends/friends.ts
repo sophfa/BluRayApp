@@ -323,6 +323,13 @@ export class FriendsComponent implements OnInit {
     });
   }
 
+  public onChatEnter(event: Event) {
+    const ke = event as KeyboardEvent;
+    if (ke.shiftKey) return;
+    ke.preventDefault();
+    void this.sendChatMessage();
+  }
+
   public avatarUrl(profile: Profile): string | null {
     return profile.avatar_url ?? null;
   }

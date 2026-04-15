@@ -17,6 +17,9 @@ interface UnreadConversation {
   latestMessage: string;
 }
 
+const MIN_SUGGESTION_TITLE_LENGTH = 3;
+const MIN_SUGGESTION_BODY_LENGTH = 10;
+
 @Component({
   selector: 'app-notifications',
   standalone: true,
@@ -99,7 +102,25 @@ export class NotificationsComponent implements OnInit {
     const title = this.suggestionTitle.trim();
     const body = this.suggestionBody.trim();
 
-    if (!title || !body || !this.auth0Id) {
+    if (!this.auth0Id) {
+      return;
+    }
+
+    if (title.length < MIN_SUGGESTION_TITLE_LENGTH) {
+      this.syncView(() => {
+        this.error = `Suggestion titles must be at least ${MIN_SUGGESTION_TITLE_LENGTH} characters.`;
+      });
+      return;
+    }
+
+    if (body.length < MIN_SUGGESTION_BODY_LENGTH) {
+      this.syncView(() => {
+        this.error = `Suggestion details must be at least ${MIN_SUGGESTION_BODY_LENGTH} characters.`;
+      });
+      return;
+    }
+
+    if (!title || !body) {
       return;
     }
 
@@ -184,6 +205,19 @@ export class NotificationsComponent implements OnInit {
     return this.adminSuggestions.filter((suggestion) => suggestion.status === 'new').length;
   }
 
+  public get canSubmitSuggestion() {
+    return this.suggestionTitle.trim().length >= MIN_SUGGESTION_TITLE_LENGTH
+      && this.suggestionBody.trim().length >= MIN_SUGGESTION_BODY_LENGTH;
+  }
+
+  public get suggestionTitleLength() {
+    return this.suggestionTitle.trim().length;
+  }
+
+  public get suggestionBodyLength() {
+    return this.suggestionBody.trim().length;
+  }
+
   public trackById(_: number, item: { id: string }) {
     return item.id;
   }
@@ -223,7 +257,7 @@ export class NotificationsComponent implements OnInit {
       return 'Supabase friend_messages table is missing. Run the README SQL.';
     }
 
-    return fallback;
+    return error.message || fallback;
   }
 
   private syncView(update: () => void) {

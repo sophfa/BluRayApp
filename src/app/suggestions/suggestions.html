@@ -1,0 +1,121 @@
+<div class="suggestions-page">
+  <header class="suggestions-header">
+    <button class="back-btn" type="button" (click)="goBack()" aria-label="Back">
+      <i class="pi pi-arrow-left"></i>
+    </button>
+    <div>
+      <p class="eyebrow">Feature Requests</p>
+      <h1>Suggestions</h1>
+      <p class="subcopy">Have an idea for the site? Send it here.</p>
+    </div>
+  </header>
+
+  <div class="loading" *ngIf="loading">Loading...</div>
+
+  <ng-container *ngIf="!loading">
+    <div class="error-banner" *ngIf="error">{{ error }}</div>
+    <div class="success-banner" *ngIf="success">{{ success }}</div>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">New Suggestion</p>
+          <h2>Send feedback to the admin team</h2>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <label class="field">
+          <span>Title</span>
+          <input
+            type="text"
+            [(ngModel)]="titleInput"
+            minlength="3"
+            maxlength="120"
+            placeholder="e.g. Add wishlist support"
+          />
+          <small class="field-help">Minimum 3 characters &mdash; current: {{ titleLen }}</small>
+        </label>
+        <label class="field">
+          <span>Details</span>
+          <textarea
+            rows="5"
+            [(ngModel)]="bodyInput"
+            minlength="10"
+            maxlength="2000"
+            placeholder="Describe your idea in detail..."
+          ></textarea>
+          <small class="field-help">Minimum 10 characters &mdash; current: {{ bodyLen }}</small>
+        </label>
+      </div>
+
+      <div class="actions">
+        <button
+          type="button"
+          class="primary-btn"
+          [disabled]="saving || !canSubmit"
+          (click)="submit()"
+        >
+          {{ saving ? 'Sending...' : 'Send Suggestion' }}
+        </button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">My Suggestions</p>
+          <h2>What you have already sent</h2>
+        </div>
+      </div>
+
+      <div class="empty" *ngIf="ownSuggestions.length === 0">
+        You have not sent any suggestions yet.
+      </div>
+
+      <div class="list" *ngIf="ownSuggestions.length > 0">
+        <article class="suggestion-card" *ngFor="let s of ownSuggestions; trackBy: trackById">
+          <div class="suggestion-top">
+            <strong>{{ s.title }}</strong>
+            <span class="status-pill" [ngClass]="'status-' + s.status">{{ s.status }}</span>
+          </div>
+          <p>{{ s.body }}</p>
+          <span class="meta">{{ s.created_at | date:'medium' }}</span>
+        </article>
+      </div>
+    </section>
+
+    <section class="panel" *ngIf="isAdmin">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">Admin Inbox</p>
+          <h2>All submitted suggestions
+            <span class="count-pill" *ngIf="adminNewCount">{{ adminNewCount }} new</span>
+          </h2>
+        </div>
+      </div>
+
+      <div class="empty" *ngIf="adminSuggestions.length === 0">No suggestions submitted yet.</div>
+
+      <div class="list" *ngIf="adminSuggestions.length > 0">
+        <article class="suggestion-card admin-card" *ngFor="let s of adminSuggestions; trackBy: trackById">
+          <div class="suggestion-top">
+            <div>
+              <strong>{{ s.title }}</strong>
+              <span class="meta" *ngIf="s.profile?.username">@{{ s.profile?.username }}</span>
+            </div>
+            <select
+              class="status-select"
+              [ngModel]="s.status"
+              (ngModelChange)="updateStatus(s, $event)"
+            >
+              <option *ngFor="let st of adminStatuses" [value]="st">{{ st }}</option>
+            </select>
+          </div>
+          <p>{{ s.body }}</p>
+          <span class="meta">{{ s.created_at | date:'medium' }}</span>
+        </article>
+      </div>
+    </section>
+  </ng-container>
+</div>

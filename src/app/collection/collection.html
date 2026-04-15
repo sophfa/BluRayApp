@@ -1,4 +1,4 @@
-<div class="col-view">
+<div class="col-view" (click)="closeColorPicker()">
   <p-menu #itemMenu [model]="movieMenuItems" [popup]="true" styleClass="movie-menu"></p-menu>
   <p-confirmpopup></p-confirmpopup>
 
@@ -8,8 +8,8 @@
         *ngFor="let collection of collections"
         type="button"
         class="switch-tab"
-        [class.is-active]="collection.path === activeCollectionPath"
-        [attr.aria-selected]="collection.path === activeCollectionPath"
+        [class.is-active]="collection.path === activeCollectionPath && !isWishlist"
+        [attr.aria-selected]="collection.path === activeCollectionPath && !isWishlist"
         (click)="switchCollection(collection.path)"
       >
         <i class="pi {{ collection.icon }}" aria-hidden="true"></i>
@@ -30,14 +30,20 @@
       </select>
     </label>
 
-    <button *ngIf="!isReadOnly" class="friends-nav-btn" (click)="goToFriends()">
-      <i class="pi pi-users"></i>
-      <span>Friends</span>
-    </button>
-    <button *ngIf="isReadOnly" class="friends-nav-btn" (click)="goToFriends()">
-      <i class="pi pi-arrow-left"></i>
-      <span>Back</span>
-    </button>
+    <div class="switcher-right">
+      <button *ngIf="!isReadOnly" class="wishlist-btn" [class.is-active]="isWishlist" (click)="toggleWishlist()">
+        <i class="pi" [ngClass]="isWishlist ? 'pi-list' : 'pi-heart'"></i>
+        <span>{{ isWishlist ? 'Collection' : 'Wishlist' }}</span>
+      </button>
+      <button *ngIf="!isReadOnly" class="friends-nav-btn" (click)="goToFriends()">
+        <i class="pi pi-users"></i>
+        <span>Friends</span>
+      </button>
+      <button *ngIf="isReadOnly" class="friends-nav-btn" (click)="goToFriends()">
+        <i class="pi pi-arrow-left"></i>
+        <span>Back</span>
+      </button>
+    </div>
   </section>
 
   <!-- Header -->
@@ -50,8 +56,6 @@
       </div>
     </div>
   </header>
-
-  <div class="collection-error" *ngIf="loadError">{{ loadError }}</div>
 
   <!-- Controls -->
   <div class="controls">
@@ -68,6 +72,9 @@
       </button>
     </div>
     <div class="action-btns" *ngIf="!isReadOnly">
+      <button *ngIf="hiddenCount > 0" class="unhide-btn" type="button" (click)="unhideAll()">
+        <i class="pi pi-eye"></i> Unhide all ({{ hiddenCount }})
+      </button>
       <p-button
         [label]="'Add ' + itemLabel"
         icon="pi pi-plus"
@@ -85,7 +92,7 @@
     <button class="sort-btn sort-title" (click)="setSort('title')">
       Title <span *ngIf="sortField === 'title'">{{ sortDir === 'asc' ? '↑' : '↓' }}</span>
     </button>
-    <span class="sort-actions-label">Actions</span>
+    <span class="sort-actions-label" *ngIf="!isReadOnly">Actions</span>
   </div>
 
   <!-- Result count -->
@@ -93,33 +100,48 @@
     Showing {{ filtered.length }} of {{ totalCount }} {{ itemLabel }}s
   </div>
 
+  <!-- Error -->
+  <div class="error-banner" *ngIf="loadError">{{ loadError }}</div>
+
   <!-- List -->
   <div class="movie-list">
     <div class="empty" *ngIf="!isLoaded">Loading collection...</div>
 
     <ng-container *ngIf="isLoaded">
       <div class="empty" *ngIf="movies().length === 0">
-        No {{ itemLabel }}s yet. Add your first one!
+        No {{ itemLabel }}s yet.{{ isReadOnly ? '' : ' Add your first one!' }}
       </div>
 
       <ng-container *ngIf="movies().length > 0">
         <div
-          *ngFor="let movie of filtered; trackBy: trackById"
+          *ngFor="let movie of filtered; let fi = index; trackBy: trackById"
           class="movie-row"
+          [class.is-platinumed]="isGameCollection && movie.platinumed"
+          [class.is-dragging]="isGameCollection && draggingIndex === fi"
+          [class.drag-over]="isGameCollection && dragOverIndex === fi && draggingIndex !== fi"
+          [attr.draggable]="isGameCollection && !isReadOnly ? 'true' : null"
+          (dragstart)="isGameCollection && onDragStart($event, fi)"
+          (dragover)="isGameCollection && onDragOver($event, fi)"
+          (drop)="isGameCollection && onDrop($event, fi)"
+          (dragend)="onDragEnd()"
         >
-          <div class="movie-num">{{ movie.id }}</div>
+          <div class="movie-num">
+            <i *ngIf="isGameCollection && !isReadOnly" class="pi pi-bars drag-handle" aria-hidden="true"></i>
+            <span *ngIf="!(isGameCollection && !isReadOnly)">{{ movie.id }}</span>
+          </div>
           <div class="movie-main">
             <div class="movie-title">
               <span>{{ movie.title }}</span>
             </div>
             <div class="movie-tags" *ngIf="(movie.tags?.length ?? 0) > 0 || movie.platinumed || movie.platform || movie.format">
               <span
-                class="tag tag-movie"
                 *ngFor="let tag of movie.tags ?? []; let tagIndex = index"
-                [ngClass]="'tag-movie-' + (tagIndex % 6)"
-              >
-                {{ tag }}
-              </span>
+                class="tag"
+                [ngClass]="!getTagColor(tag) ? 'tag-movie-' + (tagIndex % 6) : ''"
+                [style.background]="getTagColor(tag)?.bg ?? null"
+                [style.color]="getTagColor(tag)?.text ?? null"
+                [style.border-color]="getTagColor(tag)?.border ?? null"
+              >{{ tag }}</span>
               <span class="tag tag-plat" *ngIf="movie.platinumed">Plat</span>
               <span class="tag tag-platform" *ngIf="movie.platform">{{ movie.platform }}</span>
               <span class="tag tag-disc" *ngIf="movie.format === 'disc'">Disc</span>
@@ -128,6 +150,13 @@
             <p *ngIf="movie.notes" class="movie-note">{{ movie.notes }}</p>
           </div>
           <div class="movie-actions" *ngIf="!isReadOnly">
+            <button
+              type="button"
+              class="hide-btn"
+              title="Hide"
+              aria-label="Hide row"
+              (click)="hideMovie(movie.id)"
+            ><i class="pi pi-eye-slash"></i></button>
             <p-button
               icon="pi pi-ellipsis-v"
               styleClass="movie-menu-button"
@@ -145,7 +174,7 @@
   </div>
 
   <!-- Add/Edit Modal -->
-  <div class="modal-backdrop" *ngIf="showModal" (click)="showModal = false">
+  <div class="modal-backdrop" *ngIf="showModal" (click)="showModal = false; colorPickerTag = null">
     <div class="modal" (click)="$event.stopPropagation()">
       <h2>{{ isEditing ? 'Edit' : 'Add' }} {{ itemLabel }}</h2>
       <div class="form-group">
@@ -161,20 +190,76 @@
           (keyup.enter)="saveModal()"
         />
       </div>
-      <ng-container *ngIf="!isGameCollection">
-        <div class="form-group">
-          <label>Tags</label>
+
+      <!-- Tags (both bluray and games) -->
+      <div class="form-group tags-group" (click)="$event.stopPropagation()">
+        <label>Tags</label>
+        <div class="tags-input-wrap">
           <input
             type="text"
             [(ngModel)]="modalTags"
             placeholder="Comma-separated tags..."
+            autocomplete="off"
           />
+          <!-- Autocomplete dropdown -->
+          <div class="tag-autocomplete" *ngIf="tagAutocompleteSuggestions.length > 0">
+            <button
+              *ngFor="let suggestion of tagAutocompleteSuggestions"
+              type="button"
+              class="tag-ac-item"
+              (click)="selectTagSuggestion(suggestion)"
+            >{{ suggestion }}</button>
+          </div>
         </div>
+
+        <!-- Tag chips with color pickers -->
+        <div class="tag-chips" *ngIf="parsedModalTags.length > 0">
+          <div class="tag-chip-wrap" *ngFor="let tag of parsedModalTags">
+            <span
+              class="tag tag-chip"
+              [ngClass]="!getTagColor(tag) ? 'tag-movie-0' : ''"
+              [style.background]="getTagColor(tag)?.bg ?? null"
+              [style.color]="getTagColor(tag)?.text ?? null"
+              [style.border-color]="getTagColor(tag)?.border ?? null"
+            >
+              {{ tag }}
+              <button
+                type="button"
+                class="tag-color-dot"
+                [title]="'Set color for ' + tag"
+                (click)="openColorPicker(tag, $event)"
+                aria-label="Set tag color"
+              ><i class="pi pi-palette"></i></button>
+            </span>
+            <!-- Color swatch picker -->
+            <div class="color-picker-popover" *ngIf="colorPickerTag === tag">
+              <button
+                *ngFor="let preset of tagColorPresets"
+                type="button"
+                class="color-swatch"
+                [style.background]="preset.bg"
+                [style.border-color]="preset.border"
+                [title]="preset.label"
+                (click)="setTagColor(tag, preset)"
+              ></button>
+              <button
+                type="button"
+                class="color-swatch color-swatch--clear"
+                title="Remove custom color"
+                (click)="clearTagColor(tag)"
+              >✕</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <ng-container *ngIf="!isGameCollection">
         <div class="form-group">
           <label>Notes</label>
           <textarea rows="5" [(ngModel)]="modalMovie.notes" placeholder="Add your notes here..."></textarea>
         </div>
       </ng-container>
+
       <ng-container *ngIf="isGameCollection">
         <div class="form-group">
           <label>System</label>
@@ -204,11 +289,12 @@
           <textarea rows="5" [(ngModel)]="modalMovie.notes" placeholder="Add your notes here..."></textarea>
         </div>
       </ng-container>
+
       <div class="modal-actions">
         <button class="btn btn-primary" (click)="saveModal()" [disabled]="!modalMovie.title?.trim()">
           {{ isEditing ? 'Save' : 'Add' }}
         </button>
-        <button class="btn btn-ghost" (click)="showModal = false">Cancel</button>
+        <button class="btn btn-ghost" (click)="showModal = false; colorPickerTag = null">Cancel</button>
       </div>
     </div>
   </div>
