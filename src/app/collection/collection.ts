@@ -265,6 +265,7 @@ export class CollectionComponent implements OnInit {
       ? [
           { label: 'Edit game', icon: 'pi pi-pencil', command: () => this.openEdit(movie) },
           { label: 'Move to top', icon: 'pi pi-arrow-up', command: () => this.moveToTop(movie) },
+          { label: 'Move to bottom', icon: 'pi pi-arrow-down', command: () => this.moveToBottom(movie) },
         ]
       : [{ label: 'Edit movie', icon: 'pi pi-pencil', command: () => this.openEdit(movie) }];
     items.push(
@@ -369,6 +370,13 @@ export class CollectionComponent implements OnInit {
   public moveToTop(movie: Movie) {
     const list = this.movies().filter(m => m.id !== movie.id);
     list.unshift({ ...movie });
+    this.movies.set(this.normalizeGameIds(list));
+    this.save();
+  }
+
+  public moveToBottom(movie: Movie) {
+    const list = this.movies().filter(m => m.id !== movie.id);
+    list.push({ ...movie });
     this.movies.set(this.normalizeGameIds(list));
     this.save();
   }
