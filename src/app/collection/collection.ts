@@ -202,7 +202,7 @@ export class CollectionComponent implements OnInit {
   public openAdd() {
     const maxId = Math.max(...this.movies().map(m => m.id), 0);
     this.modalMovie = {
-      id: maxId + 1,
+      id: this.isGameCollection ? 1 : maxId + 1,
       title: '',
       notes: '',
       tags: [],
