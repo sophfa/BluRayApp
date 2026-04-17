@@ -1,50 +1,57 @@
 .auth-shell {
   min-height: 100vh;
+  background: #07070f;
 }
 
 .auth-shell__loading {
   min-height: 100vh;
   display: grid;
   place-items: center;
-  color: #9da3b8;
-  background: #0f0f13;
+  color: #4a4c68;
+  background: #07070f;
+  font-size: 0.9rem;
 }
 
 .auth-card {
   min-height: 100vh;
   display: grid;
   place-content: center;
-  gap: 1rem;
+  gap: 1.2rem;
   padding: 2rem;
   background:
-    radial-gradient(circle at top, rgba(79, 70, 229, 0.22), transparent 30%),
-    #0f0f13;
+    radial-gradient(ellipse 60% 40% at 50% 0%, rgba(99, 102, 241, 0.2), transparent),
+    #07070f;
   color: #e8eaf4;
   text-align: center;
 
   h1 {
     font-size: clamp(2rem, 5vw, 3.2rem);
+    font-weight: 800;
     line-height: 1;
-    letter-spacing: -0.04em;
+    letter-spacing: -0.045em;
+    color: #f0f0f8;
   }
 }
 
 .auth-card__eyebrow {
-  color: #8ea6ff;
+  color: #6366f1;
   text-transform: uppercase;
-  letter-spacing: 0.16em;
-  font-size: 0.78rem;
+  letter-spacing: 0.18em;
+  font-size: 0.72rem;
+  font-weight: 700;
 }
 
 .auth-card__copy {
   max-width: 34rem;
   margin: 0 auto;
-  color: #9da3b8;
+  color: #4a4c68;
   line-height: 1.6;
+  font-size: 0.95rem;
 }
 
 .auth-card__error {
   color: #fca5a5;
+  font-size: 0.9rem;
 }
 
 .auth-card__actions {
@@ -52,41 +59,47 @@
   justify-content: center;
   gap: 0.75rem;
   flex-wrap: wrap;
+  margin-top: 0.5rem;
 }
 
 .auth-button {
   min-width: 9rem;
-  padding: 0.9rem 1.2rem;
-  border-radius: 999px;
+  padding: 0.85rem 1.4rem;
+  border-radius: 9px;
   border: 1px solid transparent;
   font: inherit;
-  font-weight: 600;
+  font-weight: 700;
+  font-size: 0.9rem;
   cursor: pointer;
-  transition: transform 140ms ease, background 140ms ease, border-color 140ms ease;
+  transition: transform 140ms ease, background 140ms ease, box-shadow 140ms ease;
 
-  &:hover {
-    transform: translateY(-1px);
-  }
+  &:hover { transform: translateY(-1px); }
 }
 
 .auth-button--primary {
-  background: #4f46e5;
+  background: #6366f1;
   color: #fff;
+  box-shadow: 0 4px 18px rgba(99, 102, 241, 0.35);
 
   &:hover {
-    background: #4338ca;
+    background: #7375f3;
+    box-shadow: 0 6px 24px rgba(99, 102, 241, 0.5);
   }
 }
 
 .auth-button--secondary {
   background: transparent;
-  border-color: #2f3650;
-  color: #d8def4;
+  border-color: #1e1e30;
+  color: #6b6d90;
 
   &:hover {
-    background: #171d2b;
+    background: #0e0e1c;
+    border-color: #2e2e48;
+    color: #a0a2c0;
   }
 }
+
+// ── Account menu ─────────────────────────────────────────
 
 .session-menu-wrap {
   position: fixed;
@@ -98,31 +111,39 @@
 .session-menu__toggle {
   display: inline-flex;
   align-items: center;
-  gap: 0.7rem;
-  padding: 0.7rem 0.95rem;
-  border: 1px solid rgba(79, 70, 229, 0.22);
-  border-radius: 999px;
-  background: rgba(15, 15, 19, 0.88);
-  backdrop-filter: blur(14px);
-  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.28);
-  color: #eef2ff;
+  gap: 8px;
+  padding: 8px 14px 8px 10px;
+  border: 1px solid #1c1c32;
+  border-radius: 8px;
+  background: rgba(7, 7, 15, 0.94);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+  color: #7a7b9a;
   font: inherit;
+  font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
+  letter-spacing: 0.01em;
+  transition: border-color 0.15s, color 0.15s;
+
+  &:hover {
+    border-color: #2e2e50;
+    color: #c0c2de;
+  }
 }
 
-.session-menu__toggle-label {
-  font-size: 0.88rem;
-}
+.session-menu__toggle-label { font-size: 0.85rem; }
 
 .session-menu__toggle-icon {
   display: inline-grid;
   place-items: center;
-  width: 1.3rem;
-  color: #8ea6ff;
-  font-size: 1rem;
+  color: #35364e;
+  font-size: 0.75rem;
   line-height: 1;
+  transition: color 0.15s;
 }
+
+.session-menu__toggle:hover .session-menu__toggle-icon { color: #6366f1; }
 
 .session-menu__backdrop {
   position: fixed;
@@ -132,68 +153,89 @@
 
 .session-menu {
   position: absolute;
-  top: calc(100% + 0.65rem);
+  top: calc(100% + 8px);
   right: 0;
   z-index: 301;
   display: flex;
   flex-direction: column;
-  gap: 0.9rem;
-  min-width: min(22rem, calc(100vw - 2rem));
-  padding: 0.95rem;
-  border: 1px solid rgba(79, 70, 229, 0.22);
-  border-radius: 16px;
-  background: rgba(15, 15, 19, 0.88);
-  backdrop-filter: blur(14px);
-  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.28);
+  gap: 2px;
+  min-width: min(230px, calc(100vw - 2rem));
+  padding: 6px;
+  border: 1px solid #1c1c32;
+  border-radius: 12px;
+  background: rgba(9, 9, 20, 0.97);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65);
 }
 
 .session-menu__identity {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  padding: 10px 10px 12px;
+  border-bottom: 1px solid #13131f;
+  margin-bottom: 4px;
+  gap: 3px;
 }
 
 .session-menu__label {
-  color: #8ea6ff;
-  font-size: 0.7rem;
+  color: #30314a;
+  font-size: 0.67rem;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
+  font-weight: 700;
 }
 
 .session-menu__value {
-  color: #eef2ff;
-  font-size: 0.9rem;
-  line-height: 1.4;
+  color: #9a9cbf;
+  font-size: 0.85rem;
+  line-height: 1.35;
   word-break: break-word;
   overflow: hidden;
+  font-weight: 500;
 }
 
 .session-menu__role {
   align-self: flex-start;
-  margin-top: 0.55rem;
-  padding: 0.25rem 0.55rem;
-  border-radius: 999px;
-  background: #1f2d27;
-  color: #a7f3d0;
-  font-size: 0.68rem;
+  margin-top: 4px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  color: #818cf8;
+  font-size: 0.65rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
 }
 
 .session-menu__button {
   width: 100%;
-  padding: 0.7rem 0.9rem;
-  border: 1px solid #2f3650;
-  border-radius: 12px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 7px;
   background: transparent;
-  color: #d8def4;
+  color: #5a5c7a;
   font: inherit;
+  font-size: 0.86rem;
   font-weight: 600;
   cursor: pointer;
+  text-align: left;
+  transition: background 0.12s, color 0.12s;
 
   &:hover {
-    background: #171d2b;
+    background: #111128;
+    color: #c0c2de;
+  }
+
+  // Log out — last button
+  &:last-child {
+    color: #3e2020;
+
+    &:hover {
+      background: rgba(239, 68, 68, 0.07);
+      color: #f87171;
+    }
   }
 }
 
@@ -203,11 +245,7 @@
     right: 0.75rem;
   }
 
-  .session-menu__toggle {
-    padding: 0.65rem 0.85rem;
-  }
-
   .session-menu {
-    min-width: min(18rem, calc(100vw - 1.5rem));
+    min-width: min(210px, calc(100vw - 1.5rem));
   }
 }
