@@ -504,17 +504,13 @@ $plat-glow:   rgba(139, 92, 246, 0.2);
 
 .hide-btn:hover { color: #ef4444 !important; background: rgba(239, 68, 68, 0.08) !important; }
 
-.drag-handle-btn {
-  cursor: grab;
-  &:active { cursor: grabbing; }
-  // Always visible — not subject to the fade-in above
-  opacity: 1 !important;
-}
-
 .drag-handle {
   font-size: 0.8rem;
   color: $border-mid;
+  cursor: grab;
   transition: color 0.12s;
+
+  &:active { cursor: grabbing; }
 }
 
 .item-row:hover .drag-handle { color: $text-lo; }
