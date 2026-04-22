@@ -6,11 +6,16 @@ import { ConfirmationService, MenuItem } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { ConfirmPopupModule } from 'primeng/confirmpopup';
 import { MenuModule } from 'primeng/menu';
+import { AuthService } from '@auth0/auth0-angular';
+import { map } from 'rxjs';
 import { Movie } from '../movies.data';
 import { CollectionStorageService } from '../collection-storage.service';
 import { ProfileService } from '../profile.service';
+import { AuthRoleService } from '../auth-role.service';
 import { CollectionDefinition, getCollectionDefinition, normalizeEnabledCollections } from '../collection-types';
 import { TagColorService, TagColor } from '../tag-color.service';
+import { CdCollectionService } from '../cd-collection.service';
+import { CdAlbum, CdCompilation, CdWishlistItem, CdRsEntry, CdSubTab, RsTier, CdSortField, CdSortDir } from '../cd-types';
 
 type SortField = 'id' | 'title';
 type SortDir = 'asc' | 'desc';
@@ -63,12 +68,40 @@ export class CollectionComponent implements OnInit {
   public colorPickerTag: string | null = null;
   public tagColors: Record<string, TagColor> = {};
 
+  public accountMenuOpen = false;
+
+  // ── Music / CD catalogue ──────────────────────────────────
+  public cdSubTab = signal<CdSubTab>('albums');
+  public cdAlbums = signal<CdAlbum[]>([]);
+  public cdCompilations = signal<CdCompilation[]>([]);
+  public cdWishlist = signal<CdWishlistItem[]>([]);
+  public cdRs2012 = signal<CdRsEntry[]>([]);
+  public cdRs2020 = signal<CdRsEntry[]>([]);
+  public cdLoaded = false;
+
+  // CD filter/sort state
+  public cdSearch = '';
+  public cdSortField: CdSortField = 'year';
+  public cdSortDir: CdSortDir = 'asc';
+  public cdRatingFilter: number | null = null;   // null=all, 5, 4.5, 4
+  public cdTierFilter: RsTier | null = null;     // null=all
+  public cdAlbumPickOnly = false;
+  public cdOwnedOnly = false;                    // for RS lists
+
+  private readonly auth = inject(AuthService);
+  private readonly authRoles = inject(AuthRoleService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly storage = inject(CollectionStorageService);
   private readonly profileService = inject(ProfileService);
   private readonly confirmationService = inject(ConfirmationService);
   private readonly tagColorService = inject(TagColorService);
+  private readonly cdService = inject(CdCollectionService);
+
+  public readonly userDisplay$ = this.auth.user$.pipe(
+    map(u => u?.email ?? u?.name ?? u?.nickname ?? 'Signed in')
+  );
+  public readonly primaryRole$ = this.authRoles.primaryRole$;
 
   public get tagColorPresets(): TagColor[] {
     return this.tagColorService.presets;
@@ -124,6 +157,25 @@ export class CollectionComponent implements OnInit {
     this.movies.set(normalized);
     this.isLoaded = true;
     this.loadTagColors();
+    if (this.activeCollectionPath === 'music') {
+      void this.initCdData();
+    }
+  }
+
+  private async initCdData() {
+    const [albums, compilations, wishlist, rs2012, rs2020] = await Promise.all([
+      this.cdService.loadAlbums(),
+      this.cdService.loadCompilations(),
+      this.cdService.loadWishlist(),
+      this.cdService.loadRs2012(),
+      this.cdService.loadRs2020(),
+    ]);
+    this.cdAlbums.set(albums);
+    this.cdCompilations.set(compilations);
+    this.cdWishlist.set(wishlist);
+    this.cdRs2012.set(rs2012);
+    this.cdRs2020.set(rs2020);
+    this.cdLoaded = true;
   }
 
   private save() {
@@ -175,6 +227,18 @@ export class CollectionComponent implements OnInit {
   // ── Navigation ────────────────────────────────────────────
   public goToFriends() {
     void this.router.navigate(['/friends']);
+  }
+
+  public toggleAccountMenu() { this.accountMenuOpen = !this.accountMenuOpen; }
+  public closeAccountMenu()  { this.accountMenuOpen = false; }
+
+  public openSettings()      { this.closeAccountMenu(); void this.router.navigate(['/settings']); }
+  public openNotifications() { this.closeAccountMenu(); void this.router.navigate(['/notifications']); }
+  public openSuggestions()   { this.closeAccountMenu(); void this.router.navigate(['/suggestions']); }
+
+  public logOut() {
+    this.closeAccountMenu();
+    void this.auth.logout({ logoutParams: { returnTo: document.baseURI } });
   }
 
   public switchCollection(path: string) {
@@ -418,6 +482,116 @@ export class CollectionComponent implements OnInit {
   public onDragEnd() {
     this.draggingIndex = null;
     this.dragOverIndex = null;
+  }
+
+  // ── CD catalogue helpers ──────────────────────────────────
+  public get isMusicCollection() { return this.activeCollectionPath === 'music'; }
+
+  public setCdSubTab(tab: CdSubTab) {
+    this.cdSubTab.set(tab);
+    this.cdSearch = '';
+    this.cdRatingFilter = null;
+    this.cdTierFilter = null;
+    this.cdAlbumPickOnly = false;
+    this.cdOwnedOnly = false;
+    this.cdSortField = tab === 'rs2012' || tab === 'rs2020' ? 'rs_rank' : 'year';
+    this.cdSortDir = 'asc';
+  }
+
+  public setCdSort(field: CdSortField) {
+    if (this.cdSortField === field) {
+      this.cdSortDir = this.cdSortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.cdSortField = field;
+      this.cdSortDir = field === 'allmusic_rating' ? 'desc' : 'asc';
+    }
+  }
+
+  public get cdRatingLabel(): string {
+    if (this.cdRatingFilter === 5)   return '5★';
+    if (this.cdRatingFilter === 4.5) return '4.5★';
+    if (this.cdRatingFilter === 4)   return '4★';
+    return 'All ratings';
+  }
+
+  public get cdTierLabel(): string {
+    if (!this.cdTierFilter) return 'All tiers';
+    const map: Record<RsTier, string> = { 'top-50': 'Top 50', '51-100': '51–100', '101-250': '101–250', '251-500': '251–500' };
+    return map[this.cdTierFilter];
+  }
+
+  public ratingStars(rating: number | null): string {
+    if (rating === 5)   return '★★★★★';
+    if (rating === 4.5) return '★★★★½';
+    if (rating === 4)   return '★★★★';
+    return '';
+  }
+
+  public tierLabel(tier: RsTier | null): string {
+    if (!tier) return '';
+    const map: Record<RsTier, string> = { 'top-50': 'RS Top 50', '51-100': 'RS 51–100', '101-250': 'RS 101–250', '251-500': 'RS 251–500' };
+    return map[tier];
+  }
+
+  public get filteredCdAlbums(): CdAlbum[] {
+    return this.filterAndSortCdAlbums(this.cdAlbums());
+  }
+
+  public get filteredCdCompilations(): CdCompilation[] {
+    const q = this.cdSearch.trim().toLowerCase();
+    let list = this.cdCompilations();
+    if (q) list = list.filter(a => a.title.toLowerCase().includes(q) || a.artist.toLowerCase().includes(q));
+    if (this.cdRatingFilter !== null) list = list.filter(a => a.allmusic_rating === this.cdRatingFilter);
+    if (this.cdAlbumPickOnly) list = list.filter(a => a.album_pick);
+    return this.sortCdList(list, this.cdSortField, this.cdSortDir) as CdCompilation[];
+  }
+
+  public get filteredCdWishlist(): CdWishlistItem[] {
+    const q = this.cdSearch.trim().toLowerCase();
+    let list = this.cdWishlist();
+    if (q) list = list.filter(a => a.title.toLowerCase().includes(q) || a.artist.toLowerCase().includes(q));
+    if (this.cdRatingFilter !== null) list = list.filter(a => a.allmusic_rating === this.cdRatingFilter);
+    if (this.cdTierFilter) list = list.filter(a => a.rs_tier === this.cdTierFilter);
+    if (this.cdAlbumPickOnly) list = list.filter(a => a.album_pick);
+    return this.sortCdList(list, this.cdSortField, this.cdSortDir) as CdWishlistItem[];
+  }
+
+  public get filteredCdRs2012(): CdRsEntry[] {
+    return this.filterCdRs(this.cdRs2012());
+  }
+
+  public get filteredCdRs2020(): CdRsEntry[] {
+    return this.filterCdRs(this.cdRs2020());
+  }
+
+  private filterAndSortCdAlbums(list: CdAlbum[]): CdAlbum[] {
+    const q = this.cdSearch.trim().toLowerCase();
+    if (q) list = list.filter(a => a.title.toLowerCase().includes(q) || a.artist.toLowerCase().includes(q));
+    if (this.cdRatingFilter !== null) list = list.filter(a => a.allmusic_rating === this.cdRatingFilter);
+    if (this.cdTierFilter) list = list.filter(a => a.rs_tier === this.cdTierFilter);
+    if (this.cdAlbumPickOnly) list = list.filter(a => a.album_pick);
+    return this.sortCdList(list, this.cdSortField, this.cdSortDir) as CdAlbum[];
+  }
+
+  private filterCdRs(list: CdRsEntry[]): CdRsEntry[] {
+    const q = this.cdSearch.trim().toLowerCase();
+    if (q) list = list.filter(e => e.entry_text.toLowerCase().includes(q));
+    if (this.cdOwnedOnly) list = list.filter(e => e.owned);
+    return [...list].sort((a, b) => {
+      const cmp = a.rs_rank - b.rs_rank;
+      return this.cdSortDir === 'asc' ? cmp : -cmp;
+    });
+  }
+
+  private sortCdList(list: unknown[], field: CdSortField, dir: CdSortDir): unknown[] {
+    return [...list].sort((a: any, b: any) => {
+      let cmp = 0;
+      if (field === 'year')            cmp = (a.year ?? 9999) - (b.year ?? 9999);
+      else if (field === 'artist')     cmp = (a.artist ?? '').localeCompare(b.artist ?? '');
+      else if (field === 'title')      cmp = a.title.localeCompare(b.title);
+      else if (field === 'allmusic_rating') cmp = (a.allmusic_rating ?? 0) - (b.allmusic_rating ?? 0);
+      return dir === 'asc' ? cmp : -cmp;
+    });
   }
 
   // ── Private helpers ────────────────────────────────────────

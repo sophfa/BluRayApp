@@ -43,6 +43,25 @@
         <i class="pi pi-arrow-left"></i>
         <span>Back</span>
       </button>
+
+      <!-- Account -->
+      <div class="account-wrap" *ngIf="!isReadOnly">
+        <button class="nav-chip account-btn" [class.is-open]="accountMenuOpen" (click)="toggleAccountMenu()" title="Account">
+          <i class="pi pi-user"></i>
+        </button>
+        <div class="account-backdrop" *ngIf="accountMenuOpen" (click)="closeAccountMenu()"></div>
+        <section class="account-menu" *ngIf="accountMenuOpen">
+          <div class="account-identity" *ngIf="userDisplay$ | async as display">
+            <span class="account-label">Signed in</span>
+            <span class="account-value">{{ display }}</span>
+            <span class="account-role" *ngIf="primaryRole$ | async as role">{{ role }}</span>
+          </div>
+          <button class="account-item" (click)="openSettings()"><i class="pi pi-cog"></i>Settings</button>
+          <button class="account-item" (click)="openNotifications()"><i class="pi pi-bell"></i>Notifications</button>
+          <button class="account-item" (click)="openSuggestions()"><i class="pi pi-lightbulb"></i>Suggestions</button>
+          <button class="account-item account-item--danger" (click)="logOut()"><i class="pi pi-sign-out"></i>Log out</button>
+        </section>
+      </div>
     </div>
   </nav>
 
@@ -64,14 +83,25 @@
       <input
         class="search-input"
         type="text"
+        *ngIf="!isMusicCollection"
         [placeholder]="searchPlaceholder"
         [(ngModel)]="searchQuery"
       />
-      <button *ngIf="searchQuery" class="clear-btn" (click)="searchQuery = ''" aria-label="Clear">
+      <input
+        class="search-input"
+        type="text"
+        *ngIf="isMusicCollection"
+        placeholder="Search artist or title…"
+        [(ngModel)]="cdSearch"
+      />
+      <button *ngIf="!isMusicCollection && searchQuery" class="clear-btn" (click)="searchQuery = ''" aria-label="Clear">
+        <i class="pi pi-times"></i>
+      </button>
+      <button *ngIf="isMusicCollection && cdSearch" class="clear-btn" (click)="cdSearch = ''" aria-label="Clear">
         <i class="pi pi-times"></i>
       </button>
     </div>
-    <div class="toolbar-actions" *ngIf="!isReadOnly">
+    <div class="toolbar-actions" *ngIf="!isReadOnly && !isMusicCollection">
       <button *ngIf="hiddenCount > 0" class="ghost-btn" type="button" (click)="unhideAll()">
         <i class="pi pi-eye"></i>
         Unhide ({{ hiddenCount }})
@@ -84,6 +114,206 @@
       ></p-button>
     </div>
   </div>
+
+  <!-- ══ MUSIC / CD CATALOGUE VIEW ══════════════════════════════ -->
+  <ng-container *ngIf="isMusicCollection">
+
+    <!-- CD sub-tabs -->
+    <nav class="cd-subnav">
+      <button class="cd-subtab" [class.is-active]="cdSubTab() === 'albums'"       (click)="setCdSubTab('albums')">
+        <i class="pi pi-headphones"></i> Albums
+        <span class="cd-subtab-count" *ngIf="cdAlbums().length">{{ cdAlbums().length }}</span>
+      </button>
+      <button class="cd-subtab" [class.is-active]="cdSubTab() === 'compilations'" (click)="setCdSubTab('compilations')">
+        <i class="pi pi-list"></i> Compilations
+        <span class="cd-subtab-count" *ngIf="cdCompilations().length">{{ cdCompilations().length }}</span>
+      </button>
+      <button class="cd-subtab" [class.is-active]="cdSubTab() === 'wishlist'"     (click)="setCdSubTab('wishlist')">
+        <i class="pi pi-heart"></i> Wishlist
+        <span class="cd-subtab-count" *ngIf="cdWishlist().length">{{ cdWishlist().length }}</span>
+      </button>
+      <button class="cd-subtab" [class.is-active]="cdSubTab() === 'rs2012'"       (click)="setCdSubTab('rs2012')">
+        RS 2012
+        <span class="cd-subtab-count" *ngIf="cdRs2012().length">{{ cdRs2012().length }}</span>
+      </button>
+      <button class="cd-subtab" [class.is-active]="cdSubTab() === 'rs2020'"       (click)="setCdSubTab('rs2020')">
+        RS 2020
+        <span class="cd-subtab-count" *ngIf="cdRs2020().length">{{ cdRs2020().length }}</span>
+      </button>
+    </nav>
+
+    <!-- CD filter bar (albums / compilations / wishlist) -->
+    <div class="cd-filter-bar" *ngIf="cdSubTab() !== 'rs2012' && cdSubTab() !== 'rs2020'">
+      <!-- Rating filter -->
+      <div class="cd-filter-group">
+        <span class="cd-filter-label">Rating</span>
+        <div class="cd-filter-chips">
+          <button class="cd-chip" [class.is-active]="cdRatingFilter === null" (click)="cdRatingFilter = null">All</button>
+          <button class="cd-chip cd-chip--5star" [class.is-active]="cdRatingFilter === 5" (click)="cdRatingFilter = 5">★★★★★</button>
+          <button class="cd-chip cd-chip--45star" [class.is-active]="cdRatingFilter === 4.5" (click)="cdRatingFilter = 4.5">★★★★½</button>
+          <button class="cd-chip cd-chip--4star" [class.is-active]="cdRatingFilter === 4" (click)="cdRatingFilter = 4" *ngIf="cdSubTab() === 'wishlist'">★★★★</button>
+        </div>
+      </div>
+      <!-- RS tier filter -->
+      <div class="cd-filter-group" *ngIf="cdSubTab() !== 'compilations'">
+        <span class="cd-filter-label">RS List</span>
+        <div class="cd-filter-chips">
+          <button class="cd-chip" [class.is-active]="cdTierFilter === null" (click)="cdTierFilter = null">All</button>
+          <button class="cd-chip cd-chip--rs1" [class.is-active]="cdTierFilter === 'top-50'"  (click)="cdTierFilter = 'top-50'">Top 50</button>
+          <button class="cd-chip cd-chip--rs2" [class.is-active]="cdTierFilter === '51-100'"  (click)="cdTierFilter = '51-100'">51–100</button>
+          <button class="cd-chip cd-chip--rs3" [class.is-active]="cdTierFilter === '101-250'" (click)="cdTierFilter = '101-250'">101–250</button>
+          <button class="cd-chip cd-chip--rs4" [class.is-active]="cdTierFilter === '251-500'" (click)="cdTierFilter = '251-500'">251–500</button>
+        </div>
+      </div>
+      <!-- Album pick toggle -->
+      <div class="cd-filter-group">
+        <button class="cd-chip cd-chip--ap" [class.is-active]="cdAlbumPickOnly" (click)="cdAlbumPickOnly = !cdAlbumPickOnly">
+          <i class="pi pi-star-fill"></i> Album Pick
+        </button>
+      </div>
+    </div>
+
+    <!-- CD filter bar for RS lists -->
+    <div class="cd-filter-bar" *ngIf="cdSubTab() === 'rs2012' || cdSubTab() === 'rs2020'">
+      <div class="cd-filter-group">
+        <button class="cd-chip" [class.is-active]="!cdOwnedOnly" (click)="cdOwnedOnly = false">All 500</button>
+        <button class="cd-chip cd-chip--owned" [class.is-active]="cdOwnedOnly" (click)="cdOwnedOnly = true">
+          <i class="pi pi-check-circle"></i> Owned only
+        </button>
+      </div>
+    </div>
+
+    <!-- Loading state -->
+    <div class="empty-state" *ngIf="!cdLoaded">
+      <i class="pi pi-spin pi-spinner"></i>
+      <span>Loading CD catalogue…</span>
+    </div>
+
+    <ng-container *ngIf="cdLoaded">
+
+      <!-- ── Albums / Compilations / Wishlist ── -->
+      <ng-container *ngIf="cdSubTab() !== 'rs2012' && cdSubTab() !== 'rs2020'">
+
+        <!-- Column header for albums/compilations/wishlist -->
+        <div class="cd-list-header">
+          <button class="cd-col-sort cd-col-year"   (click)="setCdSort('year')">
+            Year<span class="sort-arrow" *ngIf="cdSortField === 'year'">{{ cdSortDir === 'asc' ? '↑' : '↓' }}</span>
+          </button>
+          <button class="cd-col-sort cd-col-artist" (click)="setCdSort('artist')">
+            Artist<span class="sort-arrow" *ngIf="cdSortField === 'artist'">{{ cdSortDir === 'asc' ? '↑' : '↓' }}</span>
+          </button>
+          <button class="cd-col-sort cd-col-title"  (click)="setCdSort('title')">
+            Title<span class="sort-arrow" *ngIf="cdSortField === 'title'">{{ cdSortDir === 'asc' ? '↑' : '↓' }}</span>
+          </button>
+          <button class="cd-col-sort cd-col-rating" (click)="setCdSort('allmusic_rating')">
+            Rating<span class="sort-arrow" *ngIf="cdSortField === 'allmusic_rating'">{{ cdSortDir === 'asc' ? '↑' : '↓' }}</span>
+          </button>
+        </div>
+
+        <!-- Albums list -->
+        <ng-container *ngIf="cdSubTab() === 'albums'">
+          <div class="empty-state" *ngIf="filteredCdAlbums.length === 0">
+            <i class="pi pi-search"></i><span>No albums match the current filters</span>
+          </div>
+          <div class="cd-row" *ngFor="let a of filteredCdAlbums">
+            <span class="cd-year">{{ a.year }}</span>
+            <span class="cd-artist">{{ a.artist }}</span>
+            <div class="cd-title-group">
+              <span class="cd-title">{{ a.title }}</span>
+              <span class="cd-publisher" *ngIf="a.publisher">{{ a.publisher }}</span>
+            </div>
+            <div class="cd-badges">
+              <span class="cd-badge cd-badge--rating cd-badge--5star"  *ngIf="a.is_5star">★★★★★</span>
+              <span class="cd-badge cd-badge--rating cd-badge--45star" *ngIf="a.is_4half_star">★★★★½</span>
+              <span class="cd-badge cd-badge--ap" *ngIf="a.album_pick">AP</span>
+              <span class="cd-badge cd-badge--rs" *ngIf="a.rs_tier" [ngClass]="'cd-badge--rs-' + (a.rs_tier | slice:0:2)">{{ tierLabel(a.rs_tier) }}</span>
+            </div>
+          </div>
+        </ng-container>
+
+        <!-- Compilations list -->
+        <ng-container *ngIf="cdSubTab() === 'compilations'">
+          <div class="empty-state" *ngIf="filteredCdCompilations.length === 0">
+            <i class="pi pi-search"></i><span>No compilations match the current filters</span>
+          </div>
+          <div class="cd-row" *ngFor="let a of filteredCdCompilations">
+            <span class="cd-year">{{ a.year }}</span>
+            <span class="cd-artist">{{ a.artist }}</span>
+            <div class="cd-title-group">
+              <span class="cd-title">{{ a.title }}</span>
+              <span class="cd-publisher" *ngIf="a.publisher">{{ a.publisher }}</span>
+            </div>
+            <div class="cd-badges">
+              <span class="cd-badge cd-badge--rating cd-badge--5star"  *ngIf="a.is_5star">★★★★★</span>
+              <span class="cd-badge cd-badge--rating cd-badge--45star" *ngIf="a.is_4half_star">★★★★½</span>
+              <span class="cd-badge cd-badge--ap" *ngIf="a.album_pick">AP</span>
+            </div>
+          </div>
+        </ng-container>
+
+        <!-- Wishlist list -->
+        <ng-container *ngIf="cdSubTab() === 'wishlist'">
+          <div class="empty-state" *ngIf="filteredCdWishlist.length === 0">
+            <i class="pi pi-search"></i><span>No wishlist items match the current filters</span>
+          </div>
+          <div class="cd-row" *ngFor="let a of filteredCdWishlist">
+            <span class="cd-year">{{ a.year }}</span>
+            <span class="cd-artist">{{ a.artist }}</span>
+            <div class="cd-title-group">
+              <span class="cd-title">{{ a.title }}</span>
+              <span class="cd-publisher" *ngIf="a.publisher">{{ a.publisher }}</span>
+            </div>
+            <div class="cd-badges">
+              <span class="cd-badge cd-badge--rating cd-badge--5star"  *ngIf="a.is_5star">★★★★★</span>
+              <span class="cd-badge cd-badge--rating cd-badge--45star" *ngIf="a.is_4half_star">★★★★½</span>
+              <span class="cd-badge cd-badge--rating cd-badge--4star"  *ngIf="a.is_4star">★★★★</span>
+              <span class="cd-badge cd-badge--ap" *ngIf="a.album_pick">AP</span>
+              <span class="cd-badge cd-badge--rs" *ngIf="a.rs_tier" [ngClass]="'cd-badge--rs-' + (a.rs_tier | slice:0:2)">{{ tierLabel(a.rs_tier) }}</span>
+            </div>
+          </div>
+        </ng-container>
+
+      </ng-container>
+
+      <!-- ── RS 2012 / RS 2020 lists ── -->
+      <ng-container *ngIf="cdSubTab() === 'rs2012' || cdSubTab() === 'rs2020'">
+
+        <div class="cd-list-header cd-list-header--rs">
+          <span class="cd-col-rs-rank">Rank</span>
+          <span class="cd-col-rs-entry">Album</span>
+          <span class="cd-col-rs-owned">Owned</span>
+        </div>
+
+        <ng-container *ngIf="cdSubTab() === 'rs2012'">
+          <div class="empty-state" *ngIf="filteredCdRs2012.length === 0">
+            <i class="pi pi-search"></i><span>No results</span>
+          </div>
+          <div class="cd-rs-row" *ngFor="let e of filteredCdRs2012" [class.is-owned]="e.owned">
+            <span class="cd-rs-rank">#{{ e.rs_rank }}</span>
+            <span class="cd-rs-entry">{{ e.entry_text }}</span>
+            <span class="cd-rs-owned-badge" *ngIf="e.owned"><i class="pi pi-check"></i></span>
+          </div>
+        </ng-container>
+
+        <ng-container *ngIf="cdSubTab() === 'rs2020'">
+          <div class="empty-state" *ngIf="filteredCdRs2020.length === 0">
+            <i class="pi pi-search"></i><span>No results</span>
+          </div>
+          <div class="cd-rs-row" *ngFor="let e of filteredCdRs2020" [class.is-owned]="e.owned">
+            <span class="cd-rs-rank">#{{ e.rs_rank }}</span>
+            <span class="cd-rs-entry">{{ e.entry_text }}</span>
+            <span class="cd-rs-owned-badge" *ngIf="e.owned"><i class="pi pi-check"></i></span>
+          </div>
+        </ng-container>
+
+      </ng-container>
+
+    </ng-container><!-- /cdLoaded -->
+
+  </ng-container><!-- /isMusicCollection -->
+
+  <!-- ══ NON-MUSIC COLLECTIONS (existing) ════════════════════ -->
+  <ng-container *ngIf="!isMusicCollection">
 
   <!-- Column headers -->
   <div class="col-headers">
@@ -131,7 +361,7 @@
           <div class="item-pos">
             <img *ngIf="isGameCollection && movie.platinumed" class="plat-img" src="assets/plat.png" alt="Platinumed" />
             <i *ngIf="isGameCollection && !movie.platinumed && !isReadOnly" class="pi pi-bars drag-handle"></i>
-            <span *ngIf="!isGameCollection || isReadOnly" class="pos-num">{{ movie.id }}</span>
+            <span *ngIf="!isGameCollection" class="pos-num">{{ movie.id }}</span>
           </div>
 
           <div class="item-body">
@@ -172,6 +402,8 @@
       </ng-container>
     </ng-container>
   </div>
+
+  </ng-container><!-- /!isMusicCollection -->
 
   <!-- Add/Edit Modal -->
   <div class="modal-backdrop" *ngIf="showModal" (click)="showModal = false; colorPickerTag = null">
