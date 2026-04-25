@@ -6,6 +6,19 @@ export interface Movie {
   platinumed?: boolean;
   platform?: string;
   format?: 'disc' | 'digital' | '';
+  authorSurname?: string;
+  authorGivenNames?: string;
+  publicationYear?: string;
+  publicationPlace?: string;
+  publisher?: string;
+  binding?: string;
+  deweyClass?: string;
+  storageLocation?: string;
+  price?: string;
+  listNote?: string;
+  bookCategories?: string[];
+  sourceLists?: string[];
+  importFlags?: string[];
 }
 
 export const INITIAL_MOVIES: Omit<Movie, 'notes'>[] = [

@@ -51,6 +51,10 @@ export class TagColorService {
     localStorage.setItem(this.key(collectionKey), JSON.stringify(all));
   }
 
+  public setAll(collectionKey: string, colors: Record<string, TagColor>): void {
+    localStorage.setItem(this.key(collectionKey), JSON.stringify(colors));
+  }
+
   private key(collectionKey: string): string {
     return `tag-colors:${collectionKey}`;
   }

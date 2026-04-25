@@ -48,8 +48,12 @@ export class CollectionComponent implements OnInit {
   public isEditing = false;
   public modalMovie: Partial<Movie> = {};
   public modalTags = '';
+  public bookModalCategories = '';
+  public bookModalSourceLists = '';
+  public bookModalImportFlags = '';
   public editingMovieId: number | null = null;
   public movieMenuItems: MenuItem[] = [];
+  public rsMenuItems: MenuItem[] = [];
 
   // friend view
   public isReadOnly = false;
@@ -87,6 +91,12 @@ export class CollectionComponent implements OnInit {
   public cdTierFilter: RsTier | null = null;     // null=all
   public cdAlbumPickOnly = false;
   public cdOwnedOnly = false;                    // for RS lists
+
+  // CD edit modal
+  public showCdModal = false;
+  public cdModalItem: Partial<CdAlbum & CdCompilation & CdWishlistItem> = {};
+  public cdModalTags = '';
+  public cdModalRating: number | null = null;
 
   private readonly auth = inject(AuthService);
   private readonly authRoles = inject(AuthRoleService);
@@ -156,7 +166,7 @@ export class CollectionComponent implements OnInit {
     }
     this.movies.set(normalized);
     this.isLoaded = true;
-    this.loadTagColors();
+    await this.loadTagColors();
     if (this.activeCollectionPath === 'music') {
       void this.initCdData();
     }
@@ -189,7 +199,22 @@ export class CollectionComponent implements OnInit {
       list = list.filter(m =>
         m.title.toLowerCase().includes(q) ||
         String(m.id).includes(q) ||
-        (m.tags ?? []).some(tag => tag.toLowerCase().includes(q))
+        (m.tags ?? []).some(tag => tag.toLowerCase().includes(q)) ||
+        (this.isBookCollection && [
+          m.authorSurname,
+          m.authorGivenNames,
+          m.publicationYear,
+          m.publicationPlace,
+          m.publisher,
+          m.binding,
+          m.deweyClass,
+          m.storageLocation,
+          m.price,
+          m.listNote,
+          ...(m.bookCategories ?? []),
+          ...(m.sourceLists ?? []),
+          ...(m.importFlags ?? []),
+        ].some(value => value?.toLowerCase().includes(q)))
       );
     }
     return [...list].sort((a, b) => {
@@ -209,9 +234,13 @@ export class CollectionComponent implements OnInit {
     this.hiddenIds = new Set();
   }
   public get isGameCollection() { return this.itemLabel === 'game'; }
+  public get isBookCollection() { return this.activeCollectionPath === 'books'; }
   public get primarySortField(): SortField { return 'id'; }
   public get primarySortLabel() { return this.isGameCollection ? 'Order' : '#'; }
   public get searchPlaceholder() {
+    if (this.isBookCollection) {
+      return 'Search title, author, class, category, or notes...';
+    }
     return 'Search by title, number, or tag...';
   }
 
@@ -273,8 +302,24 @@ export class CollectionComponent implements OnInit {
       platinumed: false,
       platform: '',
       format: '',
+      authorSurname: '',
+      authorGivenNames: '',
+      publicationYear: '',
+      publicationPlace: '',
+      publisher: '',
+      binding: '',
+      deweyClass: '',
+      storageLocation: '',
+      price: '',
+      listNote: '',
+      bookCategories: [],
+      sourceLists: [],
+      importFlags: [],
     };
     this.modalTags = '';
+    this.bookModalCategories = '';
+    this.bookModalSourceLists = '';
+    this.bookModalImportFlags = '';
     this.editingMovieId = null;
     this.isEditing = false;
     this.colorPickerTag = null;
@@ -301,6 +346,9 @@ export class CollectionComponent implements OnInit {
     }
     this.save();
     this.modalTags = '';
+    this.bookModalCategories = '';
+    this.bookModalSourceLists = '';
+    this.bookModalImportFlags = '';
     this.editingMovieId = null;
     this.colorPickerTag = null;
     this.showModal = false;
@@ -317,6 +365,9 @@ export class CollectionComponent implements OnInit {
   public openEdit(movie: Movie) {
     this.modalMovie = { ...movie };
     this.modalTags = (movie.tags ?? []).join(', ');
+    this.bookModalCategories = (movie.bookCategories ?? []).join(', ');
+    this.bookModalSourceLists = (movie.sourceLists ?? []).join(', ');
+    this.bookModalImportFlags = (movie.importFlags ?? []).join(', ');
     this.editingMovieId = movie.id;
     this.isEditing = true;
     this.colorPickerTag = null;
@@ -331,7 +382,7 @@ export class CollectionComponent implements OnInit {
           { label: 'Move to top', icon: 'pi pi-arrow-up', command: () => this.moveToTop(movie) },
           { label: 'Move to bottom', icon: 'pi pi-arrow-down', command: () => this.moveToBottom(movie) },
         ]
-      : [{ label: 'Edit movie', icon: 'pi pi-pencil', command: () => this.openEdit(movie) }];
+      : [{ label: `Edit ${this.itemLabel}`, icon: 'pi pi-pencil', command: () => this.openEdit(movie) }];
     items.push(
       { separator: true },
       {
@@ -367,6 +418,10 @@ export class CollectionComponent implements OnInit {
 
   public trackById(_: number, m: Movie) { return m.id; }
 
+  public bookAuthor(movie: Movie): string {
+    return [movie.authorSurname, movie.authorGivenNames].filter(Boolean).join(', ');
+  }
+
   // ── Tag autocomplete ───────────────────────────────────────
   public get allExistingTags(): string[] {
     const seen = new Set<string>();
@@ -401,8 +456,14 @@ export class CollectionComponent implements OnInit {
   }
 
   // ── Tag colors ─────────────────────────────────────────────
-  public loadTagColors() {
-    this.tagColors = this.tagColorService.getAll(this.baseCollectionKey);
+  private async loadTagColors(): Promise<void> {
+    const remote = await this.storage.loadTagColors(this.baseCollectionKey);
+    if (Object.keys(remote).length > 0) {
+      this.tagColors = remote as Record<string, TagColor>;
+      this.tagColorService.setAll(this.baseCollectionKey, this.tagColors);
+    } else {
+      this.tagColors = this.tagColorService.getAll(this.baseCollectionKey);
+    }
   }
 
   public getTagColor(tag: string): TagColor | null {
@@ -416,14 +477,16 @@ export class CollectionComponent implements OnInit {
 
   public setTagColor(tag: string, color: TagColor) {
     this.tagColorService.set(this.baseCollectionKey, tag, color);
-    this.loadTagColors();
+    this.tagColors = this.tagColorService.getAll(this.baseCollectionKey);
     this.colorPickerTag = null;
+    void this.storage.saveTagColors(this.baseCollectionKey, this.tagColors as Record<string, unknown>);
   }
 
   public clearTagColor(tag: string) {
     this.tagColorService.set(this.baseCollectionKey, tag, null);
-    this.loadTagColors();
+    this.tagColors = this.tagColorService.getAll(this.baseCollectionKey);
     this.colorPickerTag = null;
+    void this.storage.saveTagColors(this.baseCollectionKey, this.tagColors as Record<string, unknown>);
   }
 
   public closeColorPicker() {
@@ -583,6 +646,94 @@ export class CollectionComponent implements OnInit {
     });
   }
 
+  // ── CD edit modal ─────────────────────────────────────────
+  public openCdEdit(item: CdAlbum | CdCompilation | CdWishlistItem) {
+    this.cdModalItem = { ...(item as any) };
+    this.cdModalTags = ((item as any).tags ?? []).join(', ');
+    const r = (item as any).allmusic_rating as number | null;
+    this.cdModalRating = r ?? null;
+    this.showCdModal = true;
+  }
+
+  public closeCdModal() {
+    this.showCdModal = false;
+    this.cdModalItem = {};
+    this.cdModalTags = '';
+    this.cdModalRating = null;
+  }
+
+  public async saveCdEdit(): Promise<void> {
+    const id = this.cdModalItem.id;
+    if (!id) return;
+    const tags = this.parseTags(this.cdModalTags);
+    const rating = this.cdModalRating;
+    const base = {
+      year: this.cdModalItem.year ?? null,
+      artist: (this.cdModalItem.artist ?? '').trim(),
+      title: (this.cdModalItem.title ?? '').trim(),
+      publisher: (this.cdModalItem.publisher ?? '').trim() || null,
+      allmusic_rating: rating,
+      is_5star: rating === 5,
+      is_4half_star: rating === 4.5,
+      album_pick: !!(this.cdModalItem as any).album_pick,
+      notes: ((this.cdModalItem as any).notes ?? '').trim() || null,
+      tags,
+    };
+    const tab = this.cdSubTab();
+    let ok = false;
+    if (tab === 'albums') {
+      const updates: Partial<CdAlbum> = {
+        ...base,
+        rs_tier: (this.cdModalItem as CdAlbum).rs_tier ?? null,
+        rs_top500: (this.cdModalItem as CdAlbum).rs_top500 ?? null,
+      };
+      ok = await this.cdService.updateAlbum(id, updates);
+      if (ok) this.cdAlbums.update(list => list.map(a => a.id === id ? { ...a, ...updates } : a));
+    } else if (tab === 'compilations') {
+      const updates: Partial<CdCompilation> = base;
+      ok = await this.cdService.updateCompilation(id, updates);
+      if (ok) this.cdCompilations.update(list => list.map(a => a.id === id ? { ...a, ...updates } : a));
+    } else if (tab === 'wishlist') {
+      const updates: Partial<CdWishlistItem> = {
+        ...base,
+        is_4star: rating === 4,
+        rs_tier: (this.cdModalItem as CdWishlistItem).rs_tier ?? null,
+        rs_top500: (this.cdModalItem as CdWishlistItem).rs_top500 ?? null,
+      };
+      ok = await this.cdService.updateWishlistItem(id, updates);
+      if (ok) this.cdWishlist.update(list => list.map(a => a.id === id ? { ...a, ...updates } : a));
+    }
+    if (ok) this.closeCdModal();
+  }
+
+  public openRsMenu(entry: CdRsEntry, menu: { toggle(e: Event): void }, event: Event): void {
+    event.stopPropagation();
+    const tab = this.cdSubTab();
+    if (tab !== 'rs2012' && tab !== 'rs2020') return;
+    this.rsMenuItems = [
+      {
+        label: entry.owned ? 'Mark as not owned' : 'Mark as owned',
+        icon: entry.owned ? 'pi pi-times-circle' : 'pi pi-check-circle',
+        command: () => void this.toggleRsOwned(entry, tab)
+      }
+    ];
+    menu.toggle(event);
+  }
+
+  public async toggleRsOwned(entry: CdRsEntry, tab?: 'rs2012' | 'rs2020'): Promise<void> {
+    const activeTab = tab ?? this.cdSubTab();
+    if (activeTab !== 'rs2012' && activeTab !== 'rs2020') return;
+    const table = activeTab === 'rs2012' ? 'cd_rs_2012' : 'cd_rs_2020';
+    const newOwned = !entry.owned;
+    const ok = await this.cdService.toggleRsOwned(table, entry.id, newOwned);
+    if (!ok) return;
+    if (activeTab === 'rs2012') {
+      this.cdRs2012.update(list => list.map(e => e.id === entry.id ? { ...e, owned: newOwned } : e));
+    } else {
+      this.cdRs2020.update(list => list.map(e => e.id === entry.id ? { ...e, owned: newOwned } : e));
+    }
+  }
+
   private sortCdList(list: unknown[], field: CdSortField, dir: CdSortDir): unknown[] {
     return [...list].sort((a: any, b: any) => {
       let cmp = 0;
@@ -623,6 +774,27 @@ export class CollectionComponent implements OnInit {
   }
 
   private buildMovieDraft(title: string): Omit<Movie, 'id'> {
+    if (this.isBookCollection) {
+      return {
+        title,
+        notes: this.normalizeText(this.modalMovie.notes),
+        tags: this.parseTags(this.modalTags),
+        authorSurname: this.normalizeText(this.modalMovie.authorSurname),
+        authorGivenNames: this.normalizeText(this.modalMovie.authorGivenNames),
+        publicationYear: this.normalizeText(this.modalMovie.publicationYear),
+        publicationPlace: this.normalizeText(this.modalMovie.publicationPlace),
+        publisher: this.normalizeText(this.modalMovie.publisher),
+        binding: this.normalizeText(this.modalMovie.binding),
+        deweyClass: this.normalizeText(this.modalMovie.deweyClass),
+        storageLocation: this.normalizeText(this.modalMovie.storageLocation),
+        price: this.normalizeText(this.modalMovie.price),
+        listNote: this.normalizeText(this.modalMovie.listNote),
+        bookCategories: this.parseSimpleList(this.bookModalCategories),
+        sourceLists: this.parseSimpleList(this.bookModalSourceLists),
+        importFlags: this.parseSimpleList(this.bookModalImportFlags),
+      };
+    }
+
     if (this.isGameCollection) {
       return {
         title,
@@ -647,6 +819,10 @@ export class CollectionComponent implements OnInit {
 
   private normalizeFormat(value: unknown): Movie['format'] {
     return value === 'disc' || value === 'digital' ? value : '';
+  }
+
+  private parseSimpleList(value: unknown) {
+    return this.parseTags(value);
   }
 
   private parseTags(value: unknown) {

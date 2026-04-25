@@ -86,6 +86,47 @@ export class CollectionStorageService {
     return this.isMovieArray(data?.['movies']) ? data!['movies'] : [];
   }
 
+  public async loadTagColors(collectionKey: string): Promise<Record<string, unknown>> {
+    await this.initialize();
+    const authIdentity = await this.getAuthIdentity();
+    if (!this.client || !authIdentity) return {};
+    try {
+      const { data, error } = await this.client
+        .from(this.config.stateTable)
+        .select('tag_colors')
+        .eq('owner_user_id', authIdentity.userId)
+        .eq('collection_key', collectionKey)
+        .maybeSingle();
+      if (error) throw error;
+      const colors = data?.['tag_colors'];
+      return (colors && typeof colors === 'object' && !Array.isArray(colors))
+        ? colors as Record<string, unknown>
+        : {};
+    } catch {
+      return {};
+    }
+  }
+
+  public saveTagColors(collectionKey: string, colors: Record<string, unknown>): Promise<void> {
+    const queueKey = `${collectionKey}:colors`;
+    if (!this.saveQueues[queueKey]) {
+      this.saveQueues[queueKey] = Promise.resolve();
+    }
+    this.saveQueues[queueKey] = this.saveQueues[queueKey]
+      .then(async () => {
+        const authIdentity = await this.getAuthIdentity();
+        if (!this.client || !authIdentity) return;
+        const { error } = await this.client
+          .from(this.config.stateTable)
+          .update({ tag_colors: colors, updated_at: new Date().toISOString() })
+          .eq('owner_user_id', authIdentity.userId)
+          .eq('collection_key', collectionKey);
+        if (error) console.warn('CollectionStorageService: failed to save tag colors', error);
+      })
+      .catch(err => console.warn('CollectionStorageService: tag color sync failed', err));
+    return this.saveQueues[queueKey];
+  }
+
   public saveMovies(collectionKey: string, movies: Movie[]) {
     const snapshot = movies.map(m => ({ ...m }));
 

@@ -1,5 +1,6 @@
 <div class="col-view" (click)="closeColorPicker()">
   <p-menu #itemMenu [model]="movieMenuItems" [popup]="true" styleClass="movie-menu"></p-menu>
+  <p-menu #rsMenu [model]="rsMenuItems" [popup]="true" styleClass="movie-menu"></p-menu>
   <p-confirmpopup></p-confirmpopup>
 
   <!-- Tab navigation -->
@@ -208,6 +209,7 @@
           <button class="cd-col-sort cd-col-rating" (click)="setCdSort('allmusic_rating')">
             Rating<span class="sort-arrow" *ngIf="cdSortField === 'allmusic_rating'">{{ cdSortDir === 'asc' ? '↑' : '↓' }}</span>
           </button>
+          <span></span>
         </div>
 
         <!-- Albums list -->
@@ -228,6 +230,9 @@
               <span class="cd-badge cd-badge--ap" *ngIf="a.album_pick">AP</span>
               <span class="cd-badge cd-badge--rs" *ngIf="a.rs_tier" [ngClass]="'cd-badge--rs-' + (a.rs_tier | slice:0:2)">{{ tierLabel(a.rs_tier) }}</span>
             </div>
+            <div class="cd-row-actions">
+              <button type="button" class="cd-edit-btn" title="Edit" (click)="openCdEdit(a)"><i class="pi pi-pencil"></i></button>
+            </div>
           </div>
         </ng-container>
 
@@ -247,6 +252,9 @@
               <span class="cd-badge cd-badge--rating cd-badge--5star"  *ngIf="a.is_5star">★★★★★</span>
               <span class="cd-badge cd-badge--rating cd-badge--45star" *ngIf="a.is_4half_star">★★★★½</span>
               <span class="cd-badge cd-badge--ap" *ngIf="a.album_pick">AP</span>
+            </div>
+            <div class="cd-row-actions">
+              <button type="button" class="cd-edit-btn" title="Edit" (click)="openCdEdit(a)"><i class="pi pi-pencil"></i></button>
             </div>
           </div>
         </ng-container>
@@ -270,6 +278,9 @@
               <span class="cd-badge cd-badge--ap" *ngIf="a.album_pick">AP</span>
               <span class="cd-badge cd-badge--rs" *ngIf="a.rs_tier" [ngClass]="'cd-badge--rs-' + (a.rs_tier | slice:0:2)">{{ tierLabel(a.rs_tier) }}</span>
             </div>
+            <div class="cd-row-actions">
+              <button type="button" class="cd-edit-btn" title="Edit" (click)="openCdEdit(a)"><i class="pi pi-pencil"></i></button>
+            </div>
           </div>
         </ng-container>
 
@@ -282,6 +293,7 @@
           <span class="cd-col-rs-rank">Rank</span>
           <span class="cd-col-rs-entry">Album</span>
           <span class="cd-col-rs-owned">Owned</span>
+          <span class="cd-col-rs-actions"></span>
         </div>
 
         <ng-container *ngIf="cdSubTab() === 'rs2012'">
@@ -291,7 +303,13 @@
           <div class="cd-rs-row" *ngFor="let e of filteredCdRs2012" [class.is-owned]="e.owned">
             <span class="cd-rs-rank">#{{ e.rs_rank }}</span>
             <span class="cd-rs-entry">{{ e.entry_text }}</span>
-            <span class="cd-rs-owned-badge" *ngIf="e.owned"><i class="pi pi-check"></i></span>
+            <span class="cd-rs-owned-state" [class.is-owned]="e.owned" [title]="e.owned ? 'Owned' : 'Not owned'">
+              <i class="pi" [ngClass]="e.owned ? 'pi-check-circle' : 'pi-minus-circle'"></i>
+              <span>{{ e.owned ? 'Owned' : 'No' }}</span>
+            </span>
+            <button type="button" class="cd-rs-menu-btn" title="Edit ownership" aria-label="Edit ownership" (click)="openRsMenu(e, rsMenu, $event)">
+              <i class="pi pi-ellipsis-v"></i>
+            </button>
           </div>
         </ng-container>
 
@@ -302,7 +320,13 @@
           <div class="cd-rs-row" *ngFor="let e of filteredCdRs2020" [class.is-owned]="e.owned">
             <span class="cd-rs-rank">#{{ e.rs_rank }}</span>
             <span class="cd-rs-entry">{{ e.entry_text }}</span>
-            <span class="cd-rs-owned-badge" *ngIf="e.owned"><i class="pi pi-check"></i></span>
+            <span class="cd-rs-owned-state" [class.is-owned]="e.owned" [title]="e.owned ? 'Owned' : 'Not owned'">
+              <i class="pi" [ngClass]="e.owned ? 'pi-check-circle' : 'pi-minus-circle'"></i>
+              <span>{{ e.owned ? 'Owned' : 'No' }}</span>
+            </span>
+            <button type="button" class="cd-rs-menu-btn" title="Edit ownership" aria-label="Edit ownership" (click)="openRsMenu(e, rsMenu, $event)">
+              <i class="pi pi-ellipsis-v"></i>
+            </button>
           </div>
         </ng-container>
 
@@ -366,7 +390,35 @@
 
           <div class="item-body">
             <div class="item-title">{{ movie.title }}</div>
-            <div class="item-chips" *ngIf="(movie.tags?.length ?? 0) > 0 || movie.platform || movie.format">
+            <div class="book-byline" *ngIf="isBookCollection && bookAuthor(movie)">{{ bookAuthor(movie) }}</div>
+            <div class="book-meta-row" *ngIf="isBookCollection && (movie.publicationYear || movie.publicationPlace || movie.publisher)">
+              <span class="book-meta-chip" *ngIf="movie.publicationYear">{{ movie.publicationYear }}</span>
+              <span class="book-meta-chip" *ngIf="movie.publicationPlace">{{ movie.publicationPlace }}</span>
+              <span class="book-meta-chip" *ngIf="movie.publisher">{{ movie.publisher }}</span>
+            </div>
+            <div class="book-meta-row" *ngIf="isBookCollection && (movie.binding || movie.deweyClass || movie.storageLocation || movie.price)">
+              <span class="book-meta-chip" *ngIf="movie.binding">{{ movie.binding }}</span>
+              <span class="book-meta-chip" *ngIf="movie.deweyClass">Class {{ movie.deweyClass }}</span>
+              <span class="book-meta-chip" *ngIf="movie.storageLocation">{{ movie.storageLocation }}</span>
+              <span class="book-meta-chip" *ngIf="movie.price">£{{ movie.price }}</span>
+            </div>
+            <p class="book-list-note" *ngIf="isBookCollection && movie.listNote">{{ movie.listNote }}</p>
+            <div
+              class="item-chips"
+              *ngIf="
+                (movie.tags?.length ?? 0) > 0 ||
+                movie.platform ||
+                movie.format ||
+                (isBookCollection && (
+                  (movie.bookCategories?.length ?? 0) > 0 ||
+                  (movie.sourceLists?.length ?? 0) > 0 ||
+                  (movie.importFlags?.length ?? 0) > 0
+                ))
+              "
+            >
+              <span class="chip chip-book-category" *ngFor="let category of movie.bookCategories ?? []">{{ category }}</span>
+              <span class="chip chip-book-source" *ngFor="let source of movie.sourceLists ?? []">{{ source }}</span>
+              <span class="chip chip-book-flag" *ngFor="let flag of movie.importFlags ?? []">{{ flag }}</span>
               <span
                 *ngFor="let tag of movie.tags ?? []; let tagIndex = index"
                 class="chip"
@@ -405,6 +457,79 @@
 
   </ng-container><!-- /!isMusicCollection -->
 
+  <!-- CD Edit Modal -->
+  <div class="modal-backdrop" *ngIf="showCdModal" (click)="closeCdModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Edit {{ cdSubTab() === 'albums' ? 'Album' : cdSubTab() === 'compilations' ? 'Compilation' : 'Wishlist Item' }}</h2>
+        <button class="modal-close" (click)="closeCdModal()"><i class="pi pi-times"></i></button>
+      </div>
+
+      <div class="form-group">
+        <label>Year</label>
+        <input type="number" [(ngModel)]="cdModalItem.year" placeholder="e.g. 1994" />
+      </div>
+      <div class="form-group">
+        <label>Artist</label>
+        <input type="text" [(ngModel)]="cdModalItem.artist" />
+      </div>
+      <div class="form-group">
+        <label>Title</label>
+        <input type="text" [(ngModel)]="cdModalItem.title" (keyup.enter)="saveCdEdit()" autofocus />
+      </div>
+      <div class="form-group">
+        <label>Publisher / Label</label>
+        <input type="text" [(ngModel)]="cdModalItem.publisher" placeholder="e.g. Interscope" />
+      </div>
+
+      <div class="form-group">
+        <label>AllMusic Rating</label>
+        <div class="format-btns">
+          <button type="button" class="format-btn" [class.active]="cdModalRating === null" (click)="cdModalRating = null">None</button>
+          <button type="button" class="format-btn" [class.active]="cdModalRating === 5" (click)="cdModalRating = 5">★★★★★</button>
+          <button type="button" class="format-btn" [class.active]="cdModalRating === 4.5" (click)="cdModalRating = 4.5">★★★★½</button>
+          <button type="button" class="format-btn" *ngIf="cdSubTab() === 'wishlist'" [class.active]="cdModalRating === 4" (click)="cdModalRating = 4">★★★★</button>
+        </div>
+      </div>
+
+      <div class="form-group" *ngIf="cdSubTab() !== 'compilations'">
+        <label>RS List Tier</label>
+        <select class="form-select" [(ngModel)]="cdModalItem.rs_tier">
+          <option [ngValue]="null">None</option>
+          <option value="top-50">Top 50</option>
+          <option value="51-100">51–100</option>
+          <option value="101-250">101–250</option>
+          <option value="251-500">251–500</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="checkbox-row">
+          <input type="checkbox" [(ngModel)]="cdModalItem.album_pick" />
+          <span>Album Pick</span>
+        </label>
+        <label class="checkbox-row" *ngIf="cdSubTab() !== 'compilations'" style="margin-left: 8px">
+          <input type="checkbox" [(ngModel)]="cdModalItem.rs_top500" />
+          <span>RS Top 500</span>
+        </label>
+      </div>
+
+      <div class="form-group">
+        <label>Tags</label>
+        <input type="text" [(ngModel)]="cdModalTags" placeholder="Comma-separated…" autocomplete="off" />
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <textarea rows="3" [(ngModel)]="cdModalItem.notes" placeholder="Notes…"></textarea>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-ghost" (click)="closeCdModal()">Cancel</button>
+        <button class="btn btn-primary" (click)="saveCdEdit()" [disabled]="!cdModalItem.title?.trim()">Save changes</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Add/Edit Modal -->
   <div class="modal-backdrop" *ngIf="showModal" (click)="showModal = false; colorPickerTag = null">
     <div class="modal" (click)="$event.stopPropagation()">
@@ -429,6 +554,61 @@
           autofocus
         />
       </div>
+
+      <ng-container *ngIf="isBookCollection">
+        <div class="form-group">
+          <label>Author Surname</label>
+          <input type="text" [(ngModel)]="modalMovie.authorSurname" placeholder="Surname / primary author name" />
+        </div>
+        <div class="form-group">
+          <label>Author Given Names</label>
+          <input type="text" [(ngModel)]="modalMovie.authorGivenNames" placeholder="Given names, initials, co-authors…" />
+        </div>
+        <div class="form-group">
+          <label>Publication Year</label>
+          <input type="text" [(ngModel)]="modalMovie.publicationYear" placeholder="e.g. 1997 or 1975 (1984)" />
+        </div>
+        <div class="form-group">
+          <label>Publication Place</label>
+          <input type="text" [(ngModel)]="modalMovie.publicationPlace" placeholder="City / place of publication" />
+        </div>
+        <div class="form-group">
+          <label>Publisher</label>
+          <input type="text" [(ngModel)]="modalMovie.publisher" />
+        </div>
+        <div class="form-group">
+          <label>Binding / Format</label>
+          <input type="text" [(ngModel)]="modalMovie.binding" placeholder="Paperback, Hardback, Spiral paperback…" />
+        </div>
+        <div class="form-group">
+          <label>Dewey / Class</label>
+          <input type="text" [(ngModel)]="modalMovie.deweyClass" placeholder="e.g. 823.8" />
+        </div>
+        <div class="form-group">
+          <label>Storage Location</label>
+          <input type="text" [(ngModel)]="modalMovie.storageLocation" placeholder="Box 1, shelf, room…" />
+        </div>
+        <div class="form-group">
+          <label>Price</label>
+          <input type="text" [(ngModel)]="modalMovie.price" placeholder="e.g. 2.99" />
+        </div>
+        <div class="form-group">
+          <label>Catalogue / List Note</label>
+          <input type="text" [(ngModel)]="modalMovie.listNote" placeholder="e.g. 100 best novels no. 20" />
+        </div>
+        <div class="form-group">
+          <label>Categories</label>
+          <input type="text" [(ngModel)]="bookModalCategories" placeholder="Comma-separated categories…" />
+        </div>
+        <div class="form-group">
+          <label>Source Lists</label>
+          <input type="text" [(ngModel)]="bookModalSourceLists" placeholder="Comma-separated source files / lists…" />
+        </div>
+        <div class="form-group">
+          <label>Import Flags</label>
+          <input type="text" [(ngModel)]="bookModalImportFlags" placeholder="Comma-separated import flags…" />
+        </div>
+      </ng-container>
 
       <div class="form-group tags-group" (click)="$event.stopPropagation()">
         <label>Tags</label>
@@ -478,7 +658,7 @@
         </div>
       </div>
 
-      <ng-container *ngIf="!isGameCollection">
+      <ng-container *ngIf="!isGameCollection && !isBookCollection">
         <div class="form-group">
           <label>Notes</label>
           <textarea rows="4" [(ngModel)]="modalMovie.notes" placeholder="Notes…"></textarea>
@@ -505,6 +685,13 @@
             <span>Platinumed</span>
           </label>
         </div>
+        <div class="form-group">
+          <label>Notes</label>
+          <textarea rows="4" [(ngModel)]="modalMovie.notes" placeholder="Notes…"></textarea>
+        </div>
+      </ng-container>
+
+      <ng-container *ngIf="isBookCollection">
         <div class="form-group">
           <label>Notes</label>
           <textarea rows="4" [(ngModel)]="modalMovie.notes" placeholder="Notes…"></textarea>

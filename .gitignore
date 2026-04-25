@@ -42,3 +42,10 @@ __screenshots__/
 # System files
 .DS_Store
 Thumbs.db
+
+# Generated import files
+books_collection_import_chunks/
+books_collection_import_merge.sql
+books_collection_import_replace.sql
+cd_catalogue_schema.sql
+generate_books_sql.py
