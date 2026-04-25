@@ -107,6 +107,28 @@ export class CollectionStorageService {
     }
   }
 
+  public async loadHiddenIds(collectionKey: string): Promise<Set<number>> {
+    await this.initialize();
+    const authIdentity = await this.getAuthIdentity();
+    const key = this.getHiddenKey(collectionKey, authIdentity?.userId);
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return new Set();
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return new Set();
+      return new Set(parsed.filter((v): v is number => typeof v === 'number'));
+    } catch {
+      return new Set();
+    }
+  }
+
+  public async saveHiddenIds(collectionKey: string, ids: Set<number>): Promise<void> {
+    await this.initialize();
+    const authIdentity = await this.getAuthIdentity();
+    const key = this.getHiddenKey(collectionKey, authIdentity?.userId);
+    localStorage.setItem(key, JSON.stringify([...ids]));
+  }
+
   public saveTagColors(collectionKey: string, colors: Record<string, unknown>): Promise<void> {
     const queueKey = `${collectionKey}:colors`;
     if (!this.saveQueues[queueKey]) {
@@ -227,6 +249,12 @@ export class CollectionStorageService {
     }
 
     return { token: raw, userId: sub };
+  }
+
+  private getHiddenKey(collectionKey: string, userId?: string): string {
+    return userId
+      ? `hidden-ids:${encodeURIComponent(userId)}:${collectionKey}`
+      : `hidden-ids:${collectionKey}`;
   }
 
   private getLocalKey(collectionKey: string, userId?: string) {

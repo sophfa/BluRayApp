@@ -61,7 +61,6 @@ export class CollectionComponent implements OnInit {
   public friendDisplayName = '';
   public loadError = '';
 
-  // hide (temporary mass-edit helper)
   public hiddenIds = new Set<number>();
 
   // drag-to-reorder (games only)
@@ -166,6 +165,7 @@ export class CollectionComponent implements OnInit {
     }
     this.movies.set(normalized);
     this.isLoaded = true;
+    this.hiddenIds = await this.storage.loadHiddenIds(this.collectionKey);
     await this.loadTagColors();
     if (this.activeCollectionPath === 'music') {
       void this.initCdData();
@@ -228,10 +228,12 @@ export class CollectionComponent implements OnInit {
 
   public hideMovie(id: number) {
     this.hiddenIds = new Set(this.hiddenIds).add(id);
+    void this.storage.saveHiddenIds(this.collectionKey, this.hiddenIds);
   }
 
   public unhideAll() {
     this.hiddenIds = new Set();
+    void this.storage.saveHiddenIds(this.collectionKey, this.hiddenIds);
   }
   public get isGameCollection() { return this.itemLabel === 'game'; }
   public get isBookCollection() { return this.activeCollectionPath === 'books'; }
